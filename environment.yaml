@@ -1,0 +1,14 @@
+name: dataMPC_parking
+channels:
+- defaults
+- conda-forge
+dependencies:
+- python=3.6
+- numpy
+- scipy
+- matplotlib
+- jupyter
+- jupyterlab
+- nodejs
+- pip:
+  - tqdm==4.36.1
