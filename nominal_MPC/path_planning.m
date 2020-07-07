@@ -85,16 +85,6 @@ plot(P_obj, 'color', 'black')
 hold on
 axis(map_dim);
 
-As{1} = P_obj.A;
-bs{1} = P_obj.b;
-
-% % spots_u
-% As{2} = [0 1];
-% bs{2} = 288.5;
-
-% As{3} = [0 -1];
-% bs{3} = -(276+5.5);
-
 %% Get frame and transformation
 frame = getframe;
 img = rgb2gray(frame.cdata);
@@ -122,7 +112,8 @@ img_goalPose(1:2) = (img_goalPose(1:2) - [map_dim(1); map_dim(3)]) .* map2img_sc
 
 %% Hybrid A*
 ops.inflate_radius = mean(map2img_scale) * 1.5;
-ops.MotionPrimitiveLength = mean(map2img_scale) * 0.2;
+ops.MinTurningRadius = mean(map2img_scale) * 1;
+ops.MotionPrimitiveLength = ops.MinTurningRadius * pi / 4;
 ops.InterpolationDistance = mean(map2img_scale) * 0.2;
 ops.length = mean(map2img_scale) * EV.length;
 ops.width = mean(map2img_scale) * EV.width;
@@ -141,7 +132,6 @@ refPath = refPath';
 
 %% Plot back
 figure(fig_pl)
-delete([spots_u_plt, spots_l_plt])
 plot(refPath(1,:), refPath(2,:), 'r.', 'linewidth', 2)
 
 %% Plot cars
@@ -156,6 +146,20 @@ for k = 1:N+1
 	delete([pEV, cEV])
 end
 
+%% HOBCA - Obstacles
+As{1} = P_obj.A;
+bs{1} = P_obj.b;
+
+% % spots_l
+As{2} = [0 1];
+bs{2} = (276+5.5);
+
+% spots_u
+As{3} = [0 -1];
+bs{3} = -289;
+
+% delete([spots_u_plt, spots_l_plt])
+
 %% HOBCA - DualMultWS
 v0 = 2;
 dt = 0.1;
@@ -166,12 +170,19 @@ z_WS = [refPath; v_WS];
 
 %% HOBCA - WS input
 delta_WS = atan( diff(z_WS(3,:)) ./ v_WS(1:end-1) * EV.L / dt );
+
 a_WS = diff(v_WS) / dt;
-% a_WS = 0.01*(rand(1, N)-0.5);
 u_WS = [delta_WS; a_WS];
 
 %% Model Construction
-[z_opt, u_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS, mu_WS, lambda_WS);
+[z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS, mu_WS, lambda_WS);
+
+%% Check constraints
+feasible = check_constr(N, dt, As, bs, EV, z_opt, u_opt, mu_opt, lambda_opt);
+constr_name = ["Dual", "State", "Input", "Dynamic", "Obstacle"];
+for i = 1:length(constr_name)
+	fprintf('%s constraints feasibility: %d \n', constr_name(i), feasible(i))
+end
 
 %% Plot result
 opt_plt = plot(z_opt(1,:), z_opt(2,:), 'b.', 'linewidth', 2);
@@ -180,8 +191,8 @@ hold on
 %% Transformation
 z_center = z_opt;
 for k = 1:N+1
-	z_center(1, k) = z_center(1, k) + EV.offset * cos(z_center(3, k));
-	z_center(2, k) = z_center(2, k) + EV.offset * sin(z_center(3, k));
+	z_center(1, k) = z_opt(1, k) + EV.offset * cos(z_opt(3, k));
+	z_center(2, k) = z_opt(2, k) + EV.offset * sin(z_opt(3, k));
 end
 
 %% Plot car

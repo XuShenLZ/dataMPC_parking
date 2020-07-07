@@ -4,6 +4,10 @@ Data driven MPC in parking lot
 Xu Shen, xu_shen@berkeley.edu
 
 ## Change log
+### 07/06/2020
+1. HOBCA with multiple obstacles added.
+2. TODO: dynamic object.
+
 ### 07/02/2020
 1. HOBCA deployed in MATLAB where only one static obstacle is present. The file is `path_planning.m`.
 2. Workflow:

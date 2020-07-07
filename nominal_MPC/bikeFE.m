@@ -3,14 +3,17 @@
 % u: [delta, a]
 function zp = bikeFE(z, u, L, dt)
 
+	% lf = L/2;
+	% lr = L/2;
+
 	% beta = atan(lr/(lf+lr)*tan(u(1)));
 
 	% zp = z;
 
-	% zp(1) = z(1) + dt * z(3) * cos(z(4) + beta);
-	% zp(2) = z(2) + dt * z(3) * sin(z(4) + beta);
-	% zp(3) = z(3) + dt * u(2);
-	% zp(4) = z(4) + dt * z(3) / lr * sin(beta);
+	% zp(1) = z(1) + dt * z(4) * cos(z(3) + beta);
+	% zp(2) = z(2) + dt * z(4) * sin(z(3) + beta);
+	% zp(3) = z(3) + dt * z(4) / lr * sin(beta);
+	% zp(4) = z(4) + dt * u(2);
 
 	zp = z;
 
