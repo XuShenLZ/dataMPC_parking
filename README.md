@@ -4,6 +4,11 @@ Data driven MPC in parking lot
 Xu Shen, xu_shen@berkeley.edu
 
 ## Change log
+### 07/12/2020
+1. HOBCA with time variant obstacle formulation. (But in the test, the obstacle remains static for now.)
+2. Use the simplified vehicle model and collision avoidance constraints for WS, rather than Hybrid A\*. Because the Hybrid A\* may produce reverse motion due to the collision buffer.
+3. Changed some function API.
+
 ### 07/06/2020
 1. HOBCA with multiple obstacles added.
 2. TODO: dynamic object.

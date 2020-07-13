@@ -1,5 +1,5 @@
 %% hybrid_A_star: function description
-function refPath = hybrid_A_star(img, startPose, goalPose, ops)
+function [refPath, planner] = hybrid_A_star(img, startPose, goalPose, ops)
 
 	% Vehicle Config
 	vehicleDims = vehicleDimensions(ops.length, ops.width, ...
@@ -14,20 +14,9 @@ function refPath = hybrid_A_star(img, startPose, goalPose, ops)
 													 'CenterPlacements', centerPlacements,...
 													 'InflationRadius', ops.inflate_radius);
 
-	% Visualize the collision checker
+	% ====== Visualize the collision checker
 	% figure
 	% plot(map.CollisionChecker)
-
-	% Visualize the map
-	figure
-	plot(map)
-	title('Cost Map for Hybrid A*')
-	hold on
-
-	plot(startPose(1), startPose(2), 'o', 'markersize', 10, 'DisplayName', 'Start')
-	hold on
-	plot(goalPose(1), goalPose(2), 'x', 'markersize', 10, 'DisplayName', 'Goal')
-	hold on
 
 	% Hybrid A* Config
 	validator = validatorVehicleCostmap;
@@ -37,10 +26,28 @@ function refPath = hybrid_A_star(img, startPose, goalPose, ops)
 	planner = plannerHybridAStar(validator, ...
 								'InterpolationDistance', ops.InterpolationDistance, ...
 								'MinTurningRadius', ops.MinTurningRadius, ...
-								'MotionPrimitiveLength', ops.MotionPrimitiveLength);
-
-	path_struct = plan(planner, startPose', goalPose');
-	refPath = path_struct.States;
+								'MotionPrimitiveLength', ops.MotionPrimitiveLength, ...
+								'ReverseCost', ops.ReverseCost);
+	try
+		path_struct = plan(planner, startPose', goalPose');
+		refPath = path_struct.States;
+	catch
+		warning('Hybrid A* is not feasible. Return an empty refPath.');
+		refPath = [];
+% 		keyboard
+	end
 	% refPath = refPath';
 
-	show(planner)
+	% ====== Visualize
+	% fig_astar = figure;
+	% plot(map)
+	% title('Cost Map for Hybrid A*')
+	% hold on
+
+	% plot(startPose(1), startPose(2), 'o', 'markersize', 10, 'DisplayName', 'Start')
+	% hold on
+	% plot(goalPose(1), goalPose(2), 'x', 'markersize', 10, 'DisplayName', 'Goal')
+	% hold on
+
+	% show(planner)
+	% close(fig_astar)

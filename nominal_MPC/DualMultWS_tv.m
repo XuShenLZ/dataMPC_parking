@@ -1,14 +1,14 @@
 %% DualMultWS: function description
 % z_WS: [x, y, psi, v]'
-function [mu_opt, lambda_opt] = DualMultWS(N, Obs, EV, z_WS)
+function [mu_opt, lambda_opt] = DualMultWS_tv(t0, N, Obs, EV, z_WS)
 
 	% Number of obstacles
-	nOb = length(Obs);
+	nOb = size(Obs, 1);
 	
 	% Number of hyperplanes
 	nHp = [];
 	for j = 1:nOb
-		nHp = [nHp, length(Obs{j}.b)];
+		nHp = [nHp, length(Obs{j, t0+1}.b)];
 	end
 
 	L = EV.L;
@@ -17,7 +17,7 @@ function [mu_opt, lambda_opt] = DualMultWS(N, Obs, EV, z_WS)
 
 	offset = EV.offset;
 
-	disp('Constructing DualMultWS Model...');
+	disp('Solving DualMultWS Model...');
 
 	lambda = sdpvar(sum(nHp), N);
 	mu = sdpvar(4*nOb, N);
@@ -35,8 +35,8 @@ function [mu_opt, lambda_opt] = DualMultWS(N, Obs, EV, z_WS)
 		R = [cos(z_WS(3,k)), -sin(z_WS(3,k)); sin(z_WS(3,k)), cos(z_WS(3,k))];
 
 		for j = 1:nOb
-			A = Obs{j}.A;
-			b = Obs{j}.b;
+			A = Obs{j, t0+k}.A;
+			b = Obs{j, t0+k}.b;
 
 			idx0 = sum( nHp(1:j-1) ) + 1;
 			idx1 = sum( nHp(1:j) );

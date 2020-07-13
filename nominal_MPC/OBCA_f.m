@@ -1,15 +1,15 @@
 %% OBCA: function description
-function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS, mu_WS, lambda_WS)
+function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA_f(N, dt, Obs, EV, z_WS, u_WS, mu_WS, lambda_WS)
 
 	dmin = 0.001;
 
 	% Number of obstacles
-	nOb = length(As);
+	nOb = length(Obs);
 
 	% Number of hyperplanes
 	nHp = [];
 	for j = 1:nOb
-		nHp = [nHp, length(bs{j})];
+		nHp = [nHp, length(Obs{j}.b)];
 	end
 
 	L = EV.L;
@@ -18,8 +18,8 @@ function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS
 
 	offset = EV.offset;
 
-	z0 = [EV.startPose; EV.start_v];
-	zF = [EV.goalPose;  EV.goal_v];
+	z0 = EV.z0;
+	ref_z = EV.ref_z;
 
 	disp('Constructing Full Model...');
 
@@ -31,15 +31,11 @@ function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS
 	constr = [lambda(:) >= 0];
 	constr = [constr, mu(:) >= 0];
 
+	constr = [constr, z(:, 1) == z0];
+
 	obj = 0;
 
 	for k = 1:N
-
-		if k == 1
-			constr = [constr, z(:, 1) == z0];
-		elseif k == N
-			constr = [constr, z(:, k+1) == zF];
-        end
 
 		constr = [constr, -0.6 <= u(1, k) <= 0.6];
 		constr = [constr, -0.5 <= u(2, k) <= 0.5];
@@ -51,8 +47,8 @@ function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS
 		R = [cos(z(3,k)), -sin(z(3,k)); sin(z(3,k)), cos(z(3,k))];
 
 		for j = 1:nOb
-			A = As{j};
-			b = bs{j};
+			A = Obs{j}.A;
+			b = Obs{j}.b;
 
 			idx0 = sum( nHp(1:j-1) ) + 1;
 			idx1 = sum( nHp(1:j) );
@@ -66,9 +62,10 @@ function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS
 			constr = [constr, lambda_j'*A*A'*lambda_j == 1];
 		end
 
-		obj = obj + 0.1*u(1,k)^2 + 0.1*u(2,k)^2 ...
-				+ 0.1*(z(2,k) - 285)^2 ...
-				+ 0.01*(z(1,k) - z_WS(1,k))^2 + 0.01*(z(2,k) - z_WS(2,k))^2 + 0.01*(z(3,k) - z_WS(3,k))^2;
+		obj = obj + 0.01*u(1, k)^2 + 0.01*u(2, k)^2 ...
+				+ 0.1*(z(2, k+1) - ref_z(2, k))^2 ...
+				+ 0.1*(z(3, k+1) - ref_z(3, k))^2 ...
+				+ 0.1*(z(4, k+1) - ref_z(4, k))^2;
 	end
 
 	%% Assignment
@@ -77,7 +74,7 @@ function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS
 	assign(mu, mu_WS);
 	assign(lambda, lambda_WS);
 
-	ops = sdpsettings('solver', 'ipopt', 'usex0', 1, 'verbose', 1);
+	ops = sdpsettings('solver', 'ipopt', 'usex0', 1, 'verbose', 0);
     
     % ops.fmincon.MaxIter = 35;
     % ops.fmincon.OptimalityTolerance = 1e-3;
@@ -91,7 +88,6 @@ function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS
 	% ops.ipopt.min_hessian_perturbation = 1e-12;
 
 	%% Solve
-	disp('Start Solving...');
 	diagnostics = optimize(constr, obj, ops);
 
 	if diagnostics.problem == 0

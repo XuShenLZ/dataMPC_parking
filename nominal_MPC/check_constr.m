@@ -1,15 +1,15 @@
 %% check_constr: function description
-function [feasible] = check_constr(N, dt, As, bs, EV, z, u, mu, lambda)
+function [feasible] = check_constr(N, dt, Obs, EV, z, u, mu, lambda)
 	
 	dmin = 0.001;
 
 	% Number of obstacles
-	nOb = length(As);
+	nOb = length(Obs);
 
 	% Number of hyperplanes
 	nHp = [];
 	for j = 1:nOb
-		nHp = [nHp, length(bs{j})];
+		nHp = [nHp, length(Obs{j}.b)];
 	end
 
 	L = EV.L;
@@ -48,8 +48,8 @@ function [feasible] = check_constr(N, dt, As, bs, EV, z, u, mu, lambda)
 		R = [cos(z(3,k)), -sin(z(3,k)); sin(z(3,k)), cos(z(3,k))];
 		
 		for j = 1:nOb
-			A = As{j};
-			b = bs{j};
+			A = Obs{j}.A;
+			b = Obs{j}.b;
 
 			idx0 = sum( nHp(1:j-1) ) + 1;
 			idx1 = sum( nHp(1:j) );

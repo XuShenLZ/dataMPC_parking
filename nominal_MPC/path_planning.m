@@ -80,8 +80,8 @@ spots_l_plt = plot(spots_l, 'color', 'black', 'edgecolor', 'black');
 hold on
 
 % Center Object
-P_obj = Polyhedron('V', [210, 283; 210+2, 283; 210, 283+2; 210+2, 283+2]);
-plot(P_obj, 'color', 'black')
+Obs{1} = Polyhedron('V', [210, 283; 210+2, 283; 210, 283+2; 210+2, 283+2]);
+plot(Obs{1}, 'color', 'black')
 hold on
 axis(map_dim);
 
@@ -104,6 +104,9 @@ EV.g = [EV.length/2; EV.length/2; EV.width/2; EV.width/2];
 EV.startPose = [200; 285; 0];
 EV.goalPose  = [220; 285; 0];
 
+EV.start_v = 2;
+EV.goal_v  = 2;
+
 img_startPose = EV.startPose;
 img_startPose(1:2) = (img_startPose(1:2) - [map_dim(1); map_dim(3)]) .* map2img_scale';
 
@@ -115,10 +118,11 @@ ops.inflate_radius = mean(map2img_scale) * 1.5;
 ops.MinTurningRadius = mean(map2img_scale) * 1;
 ops.MotionPrimitiveLength = ops.MinTurningRadius * pi / 4;
 ops.InterpolationDistance = mean(map2img_scale) * 0.2;
+ops.ReverseCost = 1e7;
 ops.length = mean(map2img_scale) * EV.length;
 ops.width = mean(map2img_scale) * EV.width;
 
-img_refPath = hybrid_A_star(binary_img, img_startPose, img_goalPose, ops);
+[img_refPath, planner] = hybrid_A_star(binary_img, img_startPose, img_goalPose, ops);
 refPath = img_refPath;
 refPath(:, 1:2) = img_refPath(:, 1:2) ./ map2img_scale + [map_dim(1), map_dim(3)];
 
@@ -147,26 +151,24 @@ for k = 1:N+1
 end
 
 %% HOBCA - Obstacles
-As{1} = P_obj.A;
-bs{1} = P_obj.b;
+As{1} = Obs{1}.A;
+bs{1} = Obs{1}.b;
 
 % % spots_l
-As{2} = [0 1];
-bs{2} = (276+5.5);
+Obs{2} = Polyhedron('A', [0 1], 'b', (276+5.5));
 
 % spots_u
-As{3} = [0 -1];
-bs{3} = -289;
+Obs{3} = Polyhedron('A', [0 -1], 'b', -289);
 
 % delete([spots_u_plt, spots_l_plt])
 
 %% HOBCA - DualMultWS
-v0 = 2;
+v0 = EV.start_v;
 dt = 0.1;
 v_WS = [v0, vecnorm( diff(refPath(1:2,:), 1, 2) ) / dt];
 z_WS = [refPath; v_WS];
 
-[mu_WS, lambda_WS] = DualMultWS(N, As, bs, EV, z_WS);
+[mu_WS, lambda_WS] = DualMultWS(N, Obs, EV, z_WS);
 
 %% HOBCA - WS input
 delta_WS = atan( diff(z_WS(3,:)) ./ v_WS(1:end-1) * EV.L / dt );
@@ -175,10 +177,10 @@ a_WS = diff(v_WS) / dt;
 u_WS = [delta_WS; a_WS];
 
 %% Model Construction
-[z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS, mu_WS, lambda_WS);
+[z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, Obs, EV, z_WS, u_WS, mu_WS, lambda_WS);
 
 %% Check constraints
-feasible = check_constr(N, dt, As, bs, EV, z_opt, u_opt, mu_opt, lambda_opt);
+feasible = check_constr(N, dt, Obs, EV, z_opt, u_opt, mu_opt, lambda_opt);
 constr_name = ["Dual", "State", "Input", "Dynamic", "Obstacle"];
 for i = 1:length(constr_name)
 	fprintf('%s constraints feasibility: %d \n', constr_name(i), feasible(i))
