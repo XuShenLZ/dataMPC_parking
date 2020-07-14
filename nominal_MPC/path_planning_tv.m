@@ -7,7 +7,7 @@ load('traj_data.mat');
 map_offset = [210, 285];
 
 %% Experiment number 
-exp_num = 2;
+exp_num = 1;
 
 %% Extract data
 TV.dims   = ego_dims{exp_num};
@@ -15,11 +15,10 @@ TV.width  = TV.dims.width;
 TV.length = TV.dims.length;
 
 TV.traj    = ego_trajectory{exp_num};
-TV.traj(:, 1:2) = TV.traj(:, 1:2) - map_offset;
 TV.t       = TV.traj(:, 1);
 % Flip x and y
-TV.x       = TV.traj(:, 3);
-TV.y       = TV.traj(:, 2);
+TV.x       = TV.traj(:, 3) - map_offset(1);
+TV.y       = TV.traj(:, 2) - map_offset(2);
 % Flip x and y -> fix heading
 TV.heading = -TV.traj(:, 4) + pi/2;
 
@@ -69,6 +68,10 @@ axis(map_dim);
 % First dimension (y) and second dimension (x)
 map_size = [map_dim(4)-map_dim(3), map_dim(2)-map_dim(1)];
 
+%% Plot target vehicle
+plt_TV = plot(TV.x, TV.y, 'r--', 'linewidth', 2);
+hold on
+
 %% Ego Vehicle Attributes and Reference Trajectory
 
 dt = TV.t(2) - TV.t(1); % Should be 0.1s
@@ -95,8 +98,8 @@ T_total = 80;
 N = 80;
 
 ob_V0 = [0, -2; 2, -2; 0, 0; 2, 0];
-% ob_x0 = 10;
-ob_x0 = 0;
+ob_x0 = 15;
+% ob_x0 = 0;
 ob_v0 = -0.25;
 
 for t = 1:(T_total+N)
@@ -104,23 +107,23 @@ for t = 1:(T_total+N)
 	Obs{2, t} = Polyhedron('A', [0 -1], 'b', -3.5);
 
 	if t <= T_total
-		% ob_v0 = -0.25;
-		ob_v0 = 0;
+		ob_v0 = -0.25;
+		% ob_v0 = 0;
 		ob_V = ob_V0 + [ob_x0 + t*ob_v0, 0];
 	end
 
 	Obs{3, t} = Polyhedron('V', ob_V);
 
-% 	plt_ob1 = plot(Obs{1, t}, 'color', 'black');
-% 	hold on
-% 	plt_ob2 = plot(Obs{2, t}, 'color', 'black');
-% 	hold on
-% 	plt_ob3 = plot(Obs{3, t}, 'color', 'black');
-% 	hold on
-% 	pause(0.05)
-% 	delete(plt_ob1)
-% 	delete(plt_ob2)
-% 	delete(plt_ob3)
+	plt_ob1 = plot(Obs{1, t}, 'color', 'black');
+	hold on
+	plt_ob2 = plot(Obs{2, t}, 'color', 'black');
+	hold on
+	plt_ob3 = plot(Obs{3, t}, 'color', 'black');
+	hold on
+	pause(0.05)
+	delete(plt_ob1)
+	delete(plt_ob2)
+	delete(plt_ob3)
 end
 
 %% Ego vehicle tracking
@@ -294,11 +297,14 @@ while EV.z0(1) <= EV.x_max && t < T_total
 		% delete(plt_ob1)
 		% delete(plt_ob2)
 		% delete(plt_ob3)
+		EV.all_z_WS{t}  = z_WS;
 	else
 		% No collision along the way
 		% Just use the result of simple tracking
 		EV.z_opt = EV.pf_z_opt;
 		EV.u_opt = EV.pf_u_opt;
+
+		EV.all_z_WS{t}  = EV.pf_z_opt;
 	end
 
 	EV.z0 = EV.z_opt(:, 2);
@@ -306,6 +312,14 @@ while EV.z0(1) <= EV.x_max && t < T_total
 	
 	EV.traj = [EV.traj, EV.z0];
 	EV.inputs = [EV.inputs, EV.u0];
+
+	EV.all_ref_z{t} = EV.ref_z;
+	EV.all_collide{t} = collide;
+	EV.all_z_opt{t} = EV.z_opt;
+	EV.all_u_opt{t} = EV.u_opt;
+
+	EV.all_pf_z_opt{t} = EV.pf_z_opt;
+	EV.all_pf_u_opt{t} = EV.pf_u_opt;
 
 	delete([pEV, cEV])
 	delete(mpc_plt)

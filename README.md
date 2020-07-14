@@ -4,6 +4,15 @@ Data driven MPC in parking lot
 Xu Shen, xu_shen@berkeley.edu
 
 ## Change log
+### 07/13/2020
+1. Path planning with the CFTOC formulation (`path_planning_tv_CFTOC.m`):
+	1. Use the simple reference traj to check the collision. If no collsion, adjust the initial state to produce it.
+	2. Try to solve the exact collision avoidance problem. Firstly, use the unicycle model as state WS, and then dual WS, and finally OBCA.
+	3. If the exact problem cannot be solved, try to solve a speed profile on ref path for collision avoidance.
+	4. If the speed profile cannot be solved too, solve a most conservative emergency break.
+2. Iteratively run over all `exp_num`s and generate data with log file (`path_planning_datagen.m`)
+3. Minor fix about constraints of the controller.
+
 ### 07/12/2020
 1. HOBCA with time variant obstacle formulation. (But in the test, the obstacle remains static for now.)
 2. Use the simplified vehicle model and collision avoidance constraints for WS, rather than Hybrid A\*. Because the Hybrid A\* may produce reverse motion due to the collision buffer.

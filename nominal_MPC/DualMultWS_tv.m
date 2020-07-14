@@ -30,8 +30,8 @@ function [mu_opt, lambda_opt] = DualMultWS_tv(t0, N, Obs, EV, z_WS)
 
 	for k = 1:N
 
-		t = [z_WS(1,k) + offset*cos(z_WS(3,k)); z_WS(2,k) + offset*sin(z_WS(3,k))];
-		% t = [z_WS(1,k); z_WS(2,k)];
+		% t = [z_WS(1,k) + offset*cos(z_WS(3,k)); z_WS(2,k) + offset*sin(z_WS(3,k))];
+		t = [z_WS(1,k); z_WS(2,k)];
 		R = [cos(z_WS(3,k)), -sin(z_WS(3,k)); sin(z_WS(3,k)), cos(z_WS(3,k))];
 
 		for j = 1:nOb
@@ -56,15 +56,17 @@ function [mu_opt, lambda_opt] = DualMultWS_tv(t0, N, Obs, EV, z_WS)
 
 	ops = sdpsettings('solver', 'ipopt', 'verbose', 0);
 
+	ops.ipopt.tol = 1e-2;
+	ops.ipopt.constr_viol_tol = 1e-3;
+	ops.ipopt.max_iter = 300;
+
 	diagnostics = optimize(constr, obj, ops);
 
 	if diagnostics.problem == 0
 		disp('Solved');
-		mu_opt = value(mu);
-		lambda_opt = value(lambda);
 	else
-		mu_opt = zeros(4, N);
-		lambda_opt = zeros(4, N);
-		
 		yalmiperror(diagnostics.problem)
 	end
+	
+	mu_opt = value(mu);
+	lambda_opt = value(lambda);

@@ -50,6 +50,11 @@ function [z_opt, u_opt, mu_opt, lambda_opt, feas] = OBCA_tv(t0, N, dt, Obs, EV, 
 		constr = [constr, -0.6 <= u(1, k) <= 0.6];
 		constr = [constr, -0.5 <= u(2, k) <= 0.5];
 
+		if k < N
+			constr = [constr, -0.2 <= u(1, k+1) - u(1, k) <= 0.2];
+			constr = [constr, -0.3 <= u(2, k+1) - u(2, k) <= 0.3];
+		end
+
 		constr = [constr, z(:, k+1) == bikeFE(z(:,k), u(:, k), L, dt)];
 
 		t = [z(1,k) + offset*cos(z(3,k)); z(2,k) + offset*sin(z(3,k))];

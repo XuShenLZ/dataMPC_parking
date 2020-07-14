@@ -3,7 +3,7 @@
 % collision avoidance problem
 function [z_WS, feas] = unicycleWS(t0, N, dt, Obs, EV)
 
-	dmin = EV.width;
+	dmin = 1.5 * EV.width;
 
 	% Number of obstacles
 	nOb = size(Obs, 1);
@@ -13,7 +13,7 @@ function [z_WS, feas] = unicycleWS(t0, N, dt, Obs, EV)
 
 	ref_z = EV.ref_z;
 
-	disp('Solving a simplified unicycle model...');
+	disp('Solving the simplified unicycle WS model...');
 
 	z = sdpvar(3, N+1); % [x; y; psi]
 	u = sdpvar(2, N); % [v; w]
@@ -33,7 +33,7 @@ function [z_WS, feas] = unicycleWS(t0, N, dt, Obs, EV)
 			if j <= 2
 				% Static obstacles (spots boundary)
 				A = Obs{j, t0+k}.A;
-				b = Obs{j, t0+k}.b + EV.width/2;
+				b = Obs{j, t0+k}.b + EV.width*0.75;
  
 				constr = [constr, A * z(1:2, k+1) >= b];
 			else
@@ -50,7 +50,7 @@ function [z_WS, feas] = unicycleWS(t0, N, dt, Obs, EV)
 		obj = obj + 0.01*u(2, k)^2 ... % small w
 				+ 0.1*(z(2, k+1) - ref_z(2, k))^2 ... % y close to ref
 				+ 0.1*(z(3, k+1) - ref_z(3, k))^2 ... % psi close to ref
-				+ 0.1*(u(1, k) - ref_z(4, k))^2; % v close to ref
+				+ 0.05*(u(1, k) - ref_z(4, k))^2; % v close to ref
 
 	end
 
