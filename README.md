@@ -4,6 +4,9 @@ Data driven MPC in parking lot
 Xu Shen, xu_shen@berkeley.edu
 
 ## Change log
+### 07/20/2020
+1. Added the parallel computing version (`path_planning_datagen_par.m`)
+
 ### 07/13/2020
 1. Path planning with the CFTOC formulation (`path_planning_tv_CFTOC.m`):
 	1. Use the simple reference traj to check the collision. If no collsion, adjust the initial state to produce it.
