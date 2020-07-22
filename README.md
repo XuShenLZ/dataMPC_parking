@@ -3,9 +3,17 @@ Data driven MPC in parking lot
 
 Xu Shen, xu_shen@berkeley.edu
 
+## Dependencies
+### MATLAB:
+1. MPT Toolbox (For solving and viz)
+2. Parallel Computing Toolbox (Only for generating dataset)
+
 ## Change log
+### 07/22/2020
+1. Added data loading and viz script (`data_viz.m`)
+
 ### 07/20/2020
-1. Added the parallel computing version (`path_planning_datagen_par.m`)
+1. Added the parallel computing version for faster dataset generation (`path_planning_datagen_par.m`)
 
 ### 07/13/2020
 1. Path planning with the CFTOC formulation (`path_planning_tv_CFTOC.m`):
