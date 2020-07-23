@@ -12,11 +12,11 @@ Xu Shen, xu_shen@berkeley.edu
 ### 07/23/2020
 1. Cleaned the code:
 	1. Script for Time Invariant Obstacles: `path_planning_ti.m`
-	2. Script for Time Varying Obstacles: `path_planning_tv_CFTOC.m` and `\*_datagen\*`
+	2. Script for Time Varying Obstacles: `path_planning_tv_CFTOC.m` and `*_datagen*`
 	3. Scipt for Data loading and visualization: `data_viz.m`
 	4. Controller Functions: `OBCA.m`, `OBCA_tv`, `emergency_break.m`, `speed_controller.m`
 	5. Warm Start Functions: `DealWultWS.m`, `DualMultWS_tv.m`, `hybrid_A_star.m`, `unicycleWS.m`
-	6. Dynamics and other utils: `bikeFE.m`, `check_collision_\*`, `plotCar.m`
+	6. Dynamics and other utils: `bikeFE.m`, `check_collision_*`, `plotCar.m`
 
 ### 07/22/2020
 1. Added data loading and viz script (`data_viz.m`)
