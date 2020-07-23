@@ -1,4 +1,4 @@
-%% OBCA: function description
+%% OBCA: OBCA with static object
 function [z_opt, u_opt, mu_opt, lambda_opt] = OBCA(N, dt, As, bs, EV, z_WS, u_WS, mu_WS, lambda_WS)
 
 	dmin = 0.001;

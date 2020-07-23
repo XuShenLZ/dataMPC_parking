@@ -1,4 +1,4 @@
-%% speed_controller: function description
+%% speed_controller: Try to solve an optimal speed profile
 function [z_opt, u_opt, feas] = speed_controller(N, dt, Obs, EV)
 	
 	dmin = EV.length;

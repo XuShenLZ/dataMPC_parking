@@ -1,3 +1,6 @@
+%% Solve for safe trajectory
+% unicycleWS -> OBCA -> speed profile -> emergency break
+% Backbone for datagen
 close('all');
 clear('all');
 clc
@@ -7,7 +10,7 @@ load('traj_data.mat');
 map_offset = [210, 285];
 
 %% Experiment number 
-exp_num = 13;
+exp_num = 1;
 close('all');
 
 %% Extract TV data
@@ -102,6 +105,7 @@ end
 %% Ego Vehicle Attributes and Reference Trajectory
 
 dt = TV.t(2) - TV.t(1); % Should be 0.1s
+EV.dt = dt;
 
 EV.x_min = map_dim(1);
 EV.x_max = map_dim(2);
@@ -181,7 +185,7 @@ end
 
 %% Solve for aggressive collision avoidance
 try
-    error('manual switch')
+    % error('manual switch')
     
 	[z_WS, feas] = unicycleWS(0, T_total, dt, Obs, EV);
 

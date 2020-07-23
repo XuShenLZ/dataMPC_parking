@@ -1,3 +1,7 @@
+%% Generating data in a sequential for loop
+% Time varying Obstacles
+% Warm Start + OBCA -> Speed Profile Control
+% -> Emergency Break
 close('all');
 clear('all');
 clc

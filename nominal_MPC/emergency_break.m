@@ -1,4 +1,4 @@
-%% emergency_break: function description
+%% emergency_break: Emergency break controller
 function [z_opt, u_opt, feas] = emergency_break(T_total, dt, EV, TV)
 	[min_x_TV, N] = min(TV.x);
 

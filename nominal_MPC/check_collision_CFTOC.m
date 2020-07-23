@@ -1,4 +1,12 @@
-%% check_collision_tv: function description
+%% check_collision_tv: check whether there will be a collision
+% along the given traj
+% ===== Input =====
+% Obs: Cell (num_obs, time) MPT Polyhedron of obstacles
+% EV: EV struct
+% traj: the traj to evaluate
+% T_total: Total time steps of traj
+% ===== Output =====
+% collide: Boolean
 function [collide] = check_collision_CFTOC(Obs, EV, traj, T_total)
 	% ======== Output Initialization
 

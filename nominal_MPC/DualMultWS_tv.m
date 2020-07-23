@@ -1,4 +1,5 @@
-%% DualMultWS: function description
+%% DualMultWS_tv: Warm Start Dual Multipliers, using WS traj
+% For time varying dynamic obstacles
 % z_WS: [x, y, psi, v]'
 function [mu_opt, lambda_opt] = DualMultWS_tv(t0, N, Obs, EV, z_WS)
 

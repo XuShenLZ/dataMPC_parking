@@ -1,4 +1,5 @@
-%% DualMultWS: function description
+%% DualMultWS: Warm Start Dual Multipliers, using WS traj
+% For static obstacles
 % z_WS: [x, y, psi, v]'
 function [mu_opt, lambda_opt] = DualMultWS(N, Obs, EV, z_WS)
 

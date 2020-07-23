@@ -1,3 +1,7 @@
+%% Generating data in a parfor loop, more efficient
+% Time varying Obstacles
+% Warm Start + OBCA -> Speed Profile Control
+% -> Emergency Break
 close('all');
 clear('all');
 clc
@@ -9,7 +13,7 @@ map_offset = [210, 285];
 all_problem_type = cell(1, length(ego_dims));
 
 %% Experiment number 
-parfor exp_num = 1:3
+parfor exp_num = 1:length(ego_dims)
 	fprintf('\n=====\nCurrent exp_num: %d\n', exp_num);
 
 	%% Extract TV data

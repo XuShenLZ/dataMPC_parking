@@ -1,3 +1,4 @@
+%% Load and visualize generated data
 close('all');
 clear('all');
 clc

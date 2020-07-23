@@ -1,3 +1,6 @@
+%% Time invariant obstacle
+% Use hybrid a* as the warm start
+% Then OBCA
 close('all');
 clear('all');
 clc
@@ -151,8 +154,6 @@ for k = 1:N+1
 end
 
 %% HOBCA - Obstacles
-As{1} = Obs{1}.A;
-bs{1} = Obs{1}.b;
 
 % % spots_l
 Obs{2} = Polyhedron('A', [0 1], 'b', (276+5.5));

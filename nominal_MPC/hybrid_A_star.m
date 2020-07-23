@@ -1,4 +1,4 @@
-%% hybrid_A_star: function description
+%% hybrid_A_star: hybrid a star using the img input
 function [refPath, planner] = hybrid_A_star(img, startPose, goalPose, ops)
 
 	% Vehicle Config

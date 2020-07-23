@@ -1,4 +1,4 @@
-%% check_constr: function description
+%% check_constr: check the collision satisfaction
 function [feasible] = check_constr(N, dt, Obs, EV, z, u, mu, lambda)
 	
 	dmin = 0.001;
