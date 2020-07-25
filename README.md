@@ -9,6 +9,10 @@ Xu Shen, xu_shen@berkeley.edu
 2. Parallel Computing Toolbox (Only for generating dataset)
 
 ## Change log
+### 07/25/2020
+1. Generate optimal hyperplanes by solving a SVM problem: The current vehicle vertices are hard constraints, the future vertices are soft with slack var. (`generate_hyperplanes.m`, Author: Edward)
+2. Generate hyperplane dataset by traversing all data files. (`hyperplane_datagen.m`)
+
 ### 07/23/2020
 1. Cleaned the code:
 	1. Script for Time Invariant Obstacles: `path_planning_ti.m`

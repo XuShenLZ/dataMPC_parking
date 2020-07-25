@@ -2,7 +2,7 @@ close all
 clear all
 
 % uiopen('load')
-load('../data/exp_num_2.mat')
+load('data/exp_num_3.mat')
 
 % Generate hyperplanes which separate occupied space of ego and target
 % vehicle along an N step horizon
@@ -105,7 +105,7 @@ for i = 1:T-N
     % the ego and target vehicle vertices along the prediction horizon
     constraints = [(hard_X*w+b).*hard_Y >= 0, (soft_X*w+b).*soft_Y >= slack];
     
-    options = sdpsettings('solver', 'gurobi', 'verbose', 0);
+    options = sdpsettings('solver', 'quadprog', 'verbose', 0);
     status = optimize(constraints, objective, options);
     
     if status.problem ~= 0
@@ -126,7 +126,7 @@ for i = 1:T-N
     last_b = b;
 end
 
-% Plot
+%% Plot
 fig = figure();
 map_dim = [-30 30 -10 10];
 plot(TV.x, TV.y, 'k--');
@@ -140,13 +140,26 @@ for i = 1:length(training_data)
     hyp_x = -(w(2)*hyp_y+b)/w(1);
 
     p_hyp = plot(hyp_x, hyp_y, 'k');
+    hold on
     
-%     p_EV = plot([EV_Vx_curr; EV_Vx_pred], [EV_Vy_curr; EV_Vy_pred], 'ro');
-%     hold on
+    % Uncomment this part to plot the vehicle shape at current time step
+    % plt_ops.alpha = 0.5;
+    % plt_ops.circle = false;
+    % plt_ops.color = 'blue';
+    % [p_EV, c_EV] = plotCar(training_data(i).EV_N.state(1,1), ...
+    %                     training_data(i).EV_N.state(2,1), ...
+    %                     training_data(i).EV_N.state(3,1), EV.width, EV.length, plt_ops);
+    % hold on
+    % plt_ops.color = 'black';
+    % [p_TV, c_TV] = plotCar(training_data(i).TV_N.state(1,1), ...
+    %                     training_data(i).TV_N.state(2,1), ...
+    %                     training_data(i).TV_N.state(3,1), TV.width, TV.length, plt_ops);
+    % hold on
+
+    % Uncomment this part to plot the vehicle states along the horizon
     t_EV = plot(training_data(i).EV_N.state(1,:), training_data(i).EV_N.state(2,:), 'rs');
     hold on
-%     p_TV = plot([TV_Vx_curr; TV_Vx_pred], [TV_Vy_curr; TV_Vy_pred], 'bo');
-%     hold on
+
     t_TV = plot(training_data(i).TV_N.state(1,:), training_data(i).TV_N.state(2,:), 'bs');
     hold on
     
@@ -155,9 +168,9 @@ for i = 1:length(training_data)
     pause(0.1)
 %     input('Any key')
     
-%     delete(p_EV)
+    % delete(p_EV)
     delete(t_EV)
-%     delete(p_TV)
+    % delete(p_TV)
     delete(t_TV)
     delete(p_hyp)
 end
