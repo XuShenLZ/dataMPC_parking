@@ -7,20 +7,26 @@ Xu Shen, xu_shen@berkeley.edu
 ### MATLAB:
 1. MPT Toolbox (For solving and viz)
 2. Parallel Computing Toolbox (Only for generating dataset)
+3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 07/26/2020
+1. Reorganized the folder tree, placed all learning related into `.\learning\`
+2. Generate hyperplanes from all scenarios and make the dataset (`learning\hyperplane_datagen.m`)
+3. Train a shallow 2-layer FC network and save the model (`learning\train_network.m`)
+
 ### 07/25/2020
-1. Generate optimal hyperplanes by solving a SVM problem: The current vehicle vertices are hard constraints, the future vertices are soft with slack var. (`generate_hyperplanes.m`, Author: Edward)
-2. Generate hyperplane dataset by traversing all data files. (`hyperplane_datagen.m`)
+1. Generate optimal hyperplanes by solving a SVM problem: The current vehicle vertices are hard constraints, the future vertices are soft with slack var. (`nominal_MPC\generate_hyperplanes.m`, Author: Edward)
+2. Generate hyperplane dataset by traversing all data files. (`learning\hyperplane_datagen.m`)
 
 ### 07/23/2020
 1. Cleaned the code:
-	1. Script for Time Invariant Obstacles: `path_planning_ti.m`
-	2. Script for Time Varying Obstacles: `path_planning_tv_CFTOC.m` and `*_datagen*`
-	3. Scipt for Data loading and visualization: `data_viz.m`
-	4. Controller Functions: `OBCA.m`, `OBCA_tv`, `emergency_break.m`, `speed_controller.m`
-	5. Warm Start Functions: `DealWultWS.m`, `DualMultWS_tv.m`, `hybrid_A_star.m`, `unicycleWS.m`
-	6. Dynamics and other utils: `bikeFE.m`, `check_collision_*`, `plotCar.m`
+	1. Script for Time Invariant Obstacles: `nominal_MPC\path_planning_ti.m`
+	2. Script for Time Varying Obstacles: `nominal_MPC\path_planning_tv_CFTOC.m` and `nominal_MPC\*_datagen*`
+	3. Scipt for Data loading and visualization: `nominal_MPC\data_viz.m`
+	4. Controller Functions: `nominal_MPC\OBCA.m`, `nominal_MPC\OBCA_tv`, `emergency_break.m`, `nominal_MPC\speed_controller.m`
+	5. Warm Start Functions: `nominal_MPC\DealWultWS.m`, `nominal_MPC\DualMultWS_tv.m`, `nominal_MPC\hybrid_A_star.m`, `nominal_MPC\unicycleWS.m`
+	6. Dynamics and other utils: `nominal_MPC\bikeFE.m`, `nominal_MPC\check_collision_*`, `nominal_MPC\plotCar.m`
 
 ### 07/22/2020
 1. Added data loading and viz script (`data_viz.m`)

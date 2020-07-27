@@ -1,7 +1,11 @@
+# Sublime
+*.sublime*
+
 # MAT data
 *.mat
 *.asv
 data/
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

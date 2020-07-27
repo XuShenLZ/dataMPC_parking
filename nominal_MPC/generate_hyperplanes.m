@@ -2,7 +2,7 @@ close all
 clear all
 
 % uiopen('load')
-load('data/exp_num_3.mat')
+load('../data/exp_num_3.mat')
 
 % Generate hyperplanes which separate occupied space of ego and target
 % vehicle along an N step horizon
@@ -142,7 +142,7 @@ for i = 1:length(training_data)
     p_hyp = plot(hyp_x, hyp_y, 'k');
     hold on
     
-    % Uncomment this part to plot the vehicle shape at current time step
+    % === Uncomment this part to plot the vehicle shape at current time step
     % plt_ops.alpha = 0.5;
     % plt_ops.circle = false;
     % plt_ops.color = 'blue';
@@ -156,7 +156,7 @@ for i = 1:length(training_data)
     %                     training_data(i).TV_N.state(3,1), TV.width, TV.length, plt_ops);
     % hold on
 
-    % Uncomment this part to plot the vehicle states along the horizon
+    % === Uncomment this part to plot the vehicle states along the horizon
     t_EV = plot(training_data(i).EV_N.state(1,:), training_data(i).EV_N.state(2,:), 'rs');
     hold on
 

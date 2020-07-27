@@ -10,7 +10,7 @@ N = 20;
 training_set = cell(1, all_nums);
 
 % Traverse all data files
-parfor exp_num = 1:3
+parfor exp_num = 1:all_nums
 	training_set{1, exp_num} = par_hpp_gen(exp_num, N);
 end
 

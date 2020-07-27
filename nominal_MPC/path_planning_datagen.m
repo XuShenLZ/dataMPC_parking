@@ -10,7 +10,7 @@ clc
 load('traj_data.mat');
 map_offset = [210, 285];
 
-log_filename = ['data/', datestr(now,'yyyy-mm-dd_HH-MM'), '.txt'];
+log_filename = ['../data/', datestr(now,'yyyy-mm-dd_HH-MM'), '.txt'];
 
 %% Experiment number 
 for exp_num = 1:length(ego_dims)
@@ -193,7 +193,7 @@ for exp_num = 1:length(ego_dims)
 	EV.inputs = u_opt;
 
 	%% Save file
-	file_name = ['data/exp_num_', num2str(exp_num), '.mat'];
+	file_name = ['../data/exp_num_', num2str(exp_num), '.mat'];
 	save(file_name, ...
 			'parking_lines', ...
 			'static_objs', ...

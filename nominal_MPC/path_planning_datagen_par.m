@@ -206,7 +206,7 @@ parfor exp_num = 1:length(ego_dims)
 end
 
 %% Write the log 
-log_filename = ['data/', datestr(now,'yyyy-mm-dd_HH-MM'), '.txt'];
+log_filename = ['../data/', datestr(now,'yyyy-mm-dd_HH-MM'), '.txt'];
 fprintf('Writing the log...\n')
 log_fileID = fopen(log_filename, 'a+');
 for exp_num = 1:length(ego_dims)
@@ -219,7 +219,7 @@ fclose(log_fileID);
 
 %% parsave: function description
 function parsave(exp_num, parking_lines, static_objs, TV, EV, problem_type)
-	file_name = ['data/exp_num_', num2str(exp_num), '.mat'];
+	file_name = ['../data/exp_num_', num2str(exp_num), '.mat'];
 	save(file_name, ...
 			'parking_lines', ...
 			'static_objs', ...
