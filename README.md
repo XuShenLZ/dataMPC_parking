@@ -10,6 +10,9 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 07/27/2020
+1. Customized the training code (`learning\train_network.m`)
+
 ### 07/26/2020
 1. Reorganized the folder tree, placed all learning related into `.\learning\`
 2. Generate hyperplanes from all scenarios and make the dataset (`learning\hyperplane_datagen.m`)

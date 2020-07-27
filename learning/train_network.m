@@ -64,13 +64,24 @@ trainFcn = 'trainlm';  % Levenberg-Marquardt backpropagation.
 hiddenLayerSize = 73;
 net = fitnet(hiddenLayerSize,trainFcn);
 
+% Custom Properties
+net.trainParam.epochs = 2000;
+net.trainParam.lr = 0.02;
+% For a list of all transfer/activation functions type: help nntransfer
+transferFcn = 'poslin'; % 'tansig' is default
+for i = 1:length(hiddenLayerSize)
+	net.layers{i}.transferFcn = transferFcn;
+end
+
 % Setup Division of Data for Training, Validation, Testing
 net.divideParam.trainRatio = 70/100;
 net.divideParam.valRatio = 15/100;
 net.divideParam.testRatio = 15/100;
 
 % Train the Network
-[net,tr] = train(net,x,t);
+[net,tr] = train(net,x,t, ...
+					'useParallel', 'yes', ...
+					'useGPU', 'yes');
 
 % Test the Network
 y = net(x);
@@ -89,4 +100,11 @@ figure, plotperform(tr)
 %figure, plotfit(net,x,t)
 
 %% Save the network as model
-uisave({'net', 'tr'}, ['h', num2str(hiddenLayerSize), '_shallow.mat'])
+uisave({'net', 'tr'}, [trainFcn, ...
+						'_h', num2str(hiddenLayerSize, '-%d'), ...
+						'_tF-', transferFcn, ...
+						'_ep', num2str(net.trainParam.epochs), ...
+						'_lr', num2str(net.trainParam.lr), ...
+						'_shallow_', ...
+						datestr(now,'yyyy-mm-dd_HH-MM'), ...
+						'.mat'])
