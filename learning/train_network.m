@@ -4,9 +4,17 @@ close('all');
 clc
 
 %% Load dataset file
-uiopen('load');
+% If reconstructing the features and labels is
+% necessary, load the file named 'hpp_data_*'
+% If you want to directly load the previously 
+% constructed feature-label, load the file named 
+% 'feature_label_*'
+[file, path] = uigetfile('../hyperplane_dataset/*.mat', 'Select Raw Dataset');
+load([path, file])
 
-%% Construct features and labels
+%% Construct features and labels, if needed
+% Otherwise skip these sections
+% ======================================
 N = 20;
 
 all_feature = [];
@@ -39,6 +47,7 @@ label_flat   = reshape(all_label, [], batch_size);
 col_perm = randperm(batch_size);
 feature_flat = feature_flat(:, col_perm);
 label_flat   = label_flat(:, col_perm);
+% ======================================
 
 %% Train
 % Solve an Input-Output Fitting problem with a Neural Network

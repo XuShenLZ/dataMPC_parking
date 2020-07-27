@@ -4,7 +4,8 @@
 # MAT data
 *.mat
 *.asv
-data/
+*data/
+*dataset/
 models/
 
 # Byte-compiled / optimized / DLL files

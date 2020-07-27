@@ -5,9 +5,9 @@ close('all');
 clc
 
 %% Load Dataset and network
-[file, path] = uigetfile('.mat', 'Select Dataset');
+[file, path] = uigetfile('../hyperplane_dataset/hpp*.mat', 'Select Raw Dataset');
 load([path, file])
-[file, path] = uigetfile('.mat', 'Select Network');
+[file, path] = uigetfile('models/*.mat', 'Select Network Model');
 load([path, file])
 
 %% Load TV data
