@@ -58,7 +58,7 @@ t = label_flat;
 % 'trainlm' is usually fastest.
 % 'trainbr' takes longer but may be better for challenging problems.
 % 'trainscg' uses less memory. Suitable in low memory situations.
-trainFcn = 'trainlm';  % Levenberg-Marquardt backpropagation.
+trainFcn = 'trainscg';  % Scaled conjugate gradient backpropagation
 
 % Create a Fitting Network
 hiddenLayerSize = 73;
@@ -66,7 +66,7 @@ net = fitnet(hiddenLayerSize,trainFcn);
 
 % Custom Properties
 net.trainParam.epochs = 2000;
-net.trainParam.lr = 0.02;
+% net.trainParam.lr = 0.02;
 % For a list of all transfer/activation functions type: help nntransfer
 transferFcn = 'poslin'; % 'tansig' is default
 for i = 1:length(hiddenLayerSize)
@@ -104,7 +104,5 @@ uisave({'net', 'tr'}, [trainFcn, ...
 						'_h', num2str(hiddenLayerSize, '-%d'), ...
 						'_tF-', transferFcn, ...
 						'_ep', num2str(net.trainParam.epochs), ...
-						'_lr', num2str(net.trainParam.lr), ...
-						'_shallow_', ...
-						datestr(now,'yyyy-mm-dd_HH-MM'), ...
+						'_', datestr(now,'yyyy-mm-dd_HH-MM'), ...
 						'.mat'])
