@@ -21,6 +21,3 @@ function [feature, label, ego_ref] = gen_feature_label(training_data, t, N)
 		% Need to transform b into local ego frame
 		label(3,   k+1) = training_data(t+k).hyperplane.b - label(1:2, k+1)'*ego_ref;
 	end
-
-	% Normalize
-	label = label ./ vecnorm(label, 2, 1);

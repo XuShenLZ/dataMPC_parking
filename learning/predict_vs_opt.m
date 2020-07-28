@@ -23,6 +23,8 @@ for t = 1:T-N
 	[feature, ~, ego_ref] = gen_feature_label(training_data, t, N);
 
 	feature_flat = reshape(feature, [], 1);
+    % Normalize
+    feature_flat = feature_flat ./ vecnorm(feature_flat, 2, 1);
 
 	% Predict
 	Y = net(feature_flat);
