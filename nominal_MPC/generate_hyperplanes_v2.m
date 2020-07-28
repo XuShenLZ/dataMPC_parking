@@ -2,7 +2,7 @@ close all
 clear all
 
 % uiopen('load')
-load('../data/exp_num_3.mat')
+load('../data/exp_num_30.mat')
 
 % Generate hyperplanes which separate occupied space of ego and target
 % vehicle along an N step horizon
@@ -105,12 +105,11 @@ for i = 1:T-N
     % Objective is to minimize the hyperplane norm and the change in the
     % hyperplane between time steps
     if i == 1
-%         objective = norm(w)^2 + 1e6*norm(slack)^2;
-        objective = 1e6*norm(slack)^2;
+%         objective = norm(w)^2 + 1e6*norm(slack)^2; % Option 1: with norm cost on w
+        objective = 1e6*norm(slack)^2; % Option 2: without norm cost on w
     else
-%         objective = norm(w)^2 + 1e6*norm(slack)^2 + 100*(norm(w-last_w)^2 + (b-last_b)^2);
-%         objective = norm(w)^2 + 1e6*norm(slack)^2;
-        objective = 1e6*norm(slack)^2 + 100*(norm(w-last_w)^2 + (b-last_b)^2);
+%         objective = norm(w)^2 + 1e6*norm(slack)^2 + 100*(norm(w-last_w)^2 + (b-last_b)^2); % Option 1: with norm cost on w
+        objective = 1e6*norm(slack)^2 + 100*(norm(w-last_w)^2 + (b-last_b)^2); % Option 2: without norm cost on w
     end
     
     % Hard constraints on separating the ego and target vehicle vertices at
