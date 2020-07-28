@@ -47,6 +47,11 @@ label_flat   = reshape(all_label, [], batch_size);
 col_perm = randperm(batch_size);
 feature_flat = feature_flat(:, col_perm);
 label_flat   = label_flat(:, col_perm);
+
+%% Normalize
+feature_flat = feature_flat ./ vecnorm(feature_flat, 2, 1);
+label_flat   = label_flat ./ vecnorm(label_flat, 2, 1);
+
 % ======================================
 
 %% Train
