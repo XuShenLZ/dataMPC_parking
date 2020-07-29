@@ -15,7 +15,7 @@ parfor exp_num = 1:all_nums
 	training_set{1, exp_num} = par_hpp_gen(exp_num, N);
 end
 
-dataset_filename = ['data/hpp_data_v2_', datestr(now,'yyyy-mm-dd_HH-MM'), '.mat'];
+dataset_filename = ['../hyperplane_dataset/hpp_data_v2_', datestr(now,'yyyy-mm-dd_HH-MM'), '.mat'];
 
 save(dataset_filename, 'training_set')
 
@@ -23,7 +23,7 @@ save(dataset_filename, 'training_set')
 function [training_data] = par_hpp_gen(exp_num, N)
 	fprintf('\n====\nSolving Exp_num: %d\n', exp_num)
 
-	file_name = ['data/exp_num_', num2str(exp_num), '.mat'];
+	file_name = ['../data/exp_num_', num2str(exp_num), '.mat'];
 	load(file_name);
 
 	% Do not include bad examples

@@ -10,6 +10,11 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 07/28/2020
+1. Changed the `learning/gen_feature_label.m` so that it will switch between mid-point mode or free hyperplane mode
+2. Added mid-point into `learning/train_network.m` and seperated the normalization process. (The normalized variable is not used for training now) Also added a new variable `reg_data` for regression toolbox.
+3. Created a new script for prediction and visualization in mid-point mode. (`learning/predict_vs_opt_midepoint.m`)
+
 ### 07/27/2020
 1. Customized the training code (`learning/train_network.m`)
 2. Check the network prediction vs opt (`learning/predict_vs_opt.m`)
@@ -18,7 +23,7 @@ Xu Shen, xu_shen@berkeley.edu
 	2. `./hyperplane_dataset/` is the folder to place generated hyperplanes for training
 	3. `./learning/models/` is the folder to place learned models
 4. Added the hyperplane generation v2, where the hyperplanes are forced to go across the middle point of two sets, and slope is the free decision variable. (`nominal_MPC/generate_hyperplane_v2.m` and `learning/hyperplane_datagen_v2.m`)
-5. **TODO:** The slope will have the wrapping issue and jumps from pi/2 to -pi/2. Need to smooth it in training feature.
+5. ~~**TODO:** The slope will have the wrapping issue and jumps from pi/2 to -pi/2. Need to smooth it in training feature.~~
 
 ### 07/26/2020
 1. Reorganized the folder tree, placed all learning related into `./learning/`

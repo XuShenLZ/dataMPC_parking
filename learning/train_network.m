@@ -15,6 +15,7 @@ load([path, file])
 %% Construct features and labels, if needed
 % Otherwise skip these sections
 % ======================================
+mid_point = true;
 N = 20;
 
 all_feature = [];
@@ -29,7 +30,7 @@ for exp_num = 1:length(training_set)
 	end
 
 	for t = 1:length(training_data)-N
-		[feature, label, ~] = gen_feature_label(training_data, t, N);
+		[feature, label, ~] = gen_feature_label(training_data, t, N, mid_point);
 
 		% Append into the 3rd dim
 		all_feature = cat(3, all_feature, feature);
@@ -37,20 +38,30 @@ for exp_num = 1:length(training_set)
 	end
 end
 
-%% Reshape
+% Reshape
 batch_size = size(all_feature, 3);
 
 feature_flat = reshape(all_feature, [], batch_size);
 label_flat   = reshape(all_label, [], batch_size);
 
-%% Shuffle
+% Shuffle
 col_perm = randperm(batch_size);
 feature_flat = feature_flat(:, col_perm);
 label_flat   = label_flat(:, col_perm);
 
-%% Normalize
-feature_flat = feature_flat ./ vecnorm(feature_flat, 2, 1);
-label_flat   = label_flat ./ vecnorm(label_flat, 2, 1);
+% Normalize
+norm_feature_flat = feature_flat ./ vecnorm(feature_flat, 2, 1);
+norm_label_flat   = label_flat ./ vecnorm(label_flat, 2, 1);
+
+% Data for regression toolbox
+reg_data = [feature_flat; label_flat];
+
+% Save
+uisave({'feature_flat', 'label_flat', ...
+		'norm_feature_flat', 'norm_label_flat', ...
+		'reg_data', 'mid_point'}, ...
+		['../hyperplane_dataset/reg_dataset_', ...
+		datestr(now, 'yyyy-mm-dd_HH-MM')])
 
 % ======================================
 
@@ -75,7 +86,7 @@ t = label_flat;
 trainFcn = 'trainscg';  % Scaled conjugate gradient backpropagation
 
 % Create a Fitting Network
-hiddenLayerSize = 73;
+hiddenLayerSize = 40;
 net = fitnet(hiddenLayerSize,trainFcn);
 
 % Custom Properties
@@ -114,9 +125,10 @@ figure, plotperform(tr)
 %figure, plotfit(net,x,t)
 
 %% Save the network as model
-uisave({'net', 'tr'}, [trainFcn, ...
+uisave({'net', 'tr'}, ['models/FreeHpp', ...
+						'_TF-', trainFcn, ...
 						'_h', num2str(hiddenLayerSize, '-%d'), ...
-						'_TF-', transferFcn, ...
+						'_AC-', transferFcn, ...
 						'_ep', num2str(net.trainParam.epochs), ...
 						'_ER', num2str(performance), ...
 						'_', datestr(now,'yyyy-mm-dd_HH-MM'), ...
