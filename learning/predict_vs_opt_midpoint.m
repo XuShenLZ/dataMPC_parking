@@ -23,19 +23,32 @@ N = 20;
 
 %% Predict the hyperplane using trained function
 mid_point = true;
+model_type = 'gp';
 for t = 1:T-N
 	[feature, ~, ~] = gen_feature_label(training_data, t, N, mid_point);
+     % Flatten
+    feature_flat = reshape(feature, [], 1);
 
-    % Flatten
-	feature_flat = reshape(feature, [], 1);
-    % Normalize
-    % feature_flat = feature_flat ./ vecnorm(feature_flat, 2, 1);
+    switch model_type
+        case 'nn'
+            % Normalize
+            % feature_flat = feature_flat ./ vecnorm(feature_flat, 2, 1);
 
-	% Predict
-	Y = net(feature_flat);
+            % Predict
+            Y = net(feature_flat);
+        case 'gp'
+            predictor = feature_flat';
+            label_dim = 21;
 
-	% Return to shape 1 x timesteps
-	angles = reshape(Y, [], N+1);
+            Y = zeros(label_dim, 1);
+            for i = 1:label_dim
+                Y(i) = GPs{i}.trainedModel.predictFcn(predictor);
+            end
+        otherwise
+            error('Model not defined');
+    end
+    % Return to shape 1 x timesteps
+    angles = reshape(Y, [], N+1);
 
 	% Obtain the [w, b] form of hyperplane
     global_hpp = zeros(3, N+1);
