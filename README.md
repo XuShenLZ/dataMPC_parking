@@ -10,10 +10,14 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
-## 07/29/2020
-1. Added the GP training. For every element in the flattened label vector, train one GP for it, with all feature dimensions as the predictor. (`learning\gp.m`)
-2. Renamed `learning\train_network.m` into `learning\load_train_model.m` so that user has the option to train either NN or GP. The NN training is also organized into `learning\nn.m`
-3. Changed the prediction and viz script so that it can switch between GP and NN. (`predict_vs_opt_midpoint.m`)
+### 07/30/2020
+1. Manually divided the \~80% training set and 20% validation set for NN and GP (`learning/load_train_model.m`)
+2. Simplified the GP code, so that it only fits once, output compact model, and offer validation MSE. (`gp.m`)
+
+### 07/29/2020
+1. Added the GP training. For every element in the flattened label vector, train one GP for it, with all feature dimensions as the predictor. (`learning/gp.m`)
+2. Renamed `learning/train_network.m` into `learning/load_train_model.m` so that user has the option to train either NN or GP. The NN training is also organized into `learning/nn.m`
+3. Changed the prediction and viz script so that it can switch between GP and NN. (`learning/predict_vs_opt_midpoint.m`)
 
 ### 07/28/2020
 1. Changed the `learning/gen_feature_label.m` so that it will switch between mid-point mode or free hyperplane mode

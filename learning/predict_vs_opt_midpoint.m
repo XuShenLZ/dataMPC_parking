@@ -11,7 +11,7 @@ load([path, file])
 load([path, file])
 
 %% Load TV data
-exp_num = 3;
+exp_num = 2;
 load(['../data/exp_num_', num2str(exp_num), '.mat'])
 
 training_data = training_set{exp_num};
@@ -42,7 +42,7 @@ for t = 1:T-N
 
             Y = zeros(label_dim, 1);
             for i = 1:label_dim
-                Y(i) = GPs{i}.trainedModel.predictFcn(predictor);
+                Y(i) = predict(GPs{i}.trainedModel, predictor);
             end
         otherwise
             error('Model not defined');

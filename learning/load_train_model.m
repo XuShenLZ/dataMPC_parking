@@ -18,50 +18,87 @@ load([path, file])
 mid_point = true;
 N = 20;
 
-all_feature = [];
-all_label   = [];
-
-for exp_num = 1:length(training_set)
-	fprintf('Exp_num: %d / %d\n', exp_num, length(training_set))
-
+% Select valid experiments
+valid_exps = [];
+for exp_num = 1:10
 	training_data = training_set{exp_num};
 
 	if isempty(training_data)
 		continue
+	else
+		valid_exps = [valid_exps, exp_num];
 	end
+end
+
+% 80% training set, 20% validation/test set
+valid_num = length(valid_exps);
+trn_exps = randsample(valid_exps, floor(0.8*valid_num));
+val_exps = setdiff(valid_exps, trn_exps);
+
+% Training set
+trn_feature = [];
+trn_label   = [];
+
+for i = 1:length(trn_exps)
+	exp_num = trn_exps(i);
+	fprintf('Traning set: %d / %d\n', i, length(trn_exps))
+
+	training_data = training_set{exp_num};
 
 	for t = 1:length(training_data)-N
 		[feature, label, ~] = gen_feature_label(training_data, t, N, mid_point);
 
 		% Append into the 3rd dim
-		all_feature = cat(3, all_feature, feature);
-		all_label   = cat(3, all_label, label);
+		trn_feature = cat(3, trn_feature, feature);
+		trn_label   = cat(3, trn_label, label);
+	end
+end
+
+% Val set
+val_feature = [];
+val_label   = [];
+
+for i = 1:length(val_exps)
+	exp_num = val_exps(i);
+	fprintf('Validation set: %d / %d\n', i, length(val_exps))
+
+	training_data = training_set{exp_num};
+
+	for t = 1:length(training_data)-N
+		[feature, label, ~] = gen_feature_label(training_data, t, N, mid_point);
+
+		% Append into the 3rd dim
+		val_feature = cat(3, val_feature, feature);
+		val_label   = cat(3, val_label, label);
 	end
 end
 
 % Reshape
-batch_size = size(all_feature, 3);
+trn_size = size(trn_feature, 3);
+trn_feature_flat = reshape(trn_feature, [], trn_size);
+trn_label_flat   = reshape(trn_label, [], trn_size);
 
-feature_flat = reshape(all_feature, [], batch_size);
-label_flat   = reshape(all_label, [], batch_size);
+val_size = size(val_feature, 3);
+val_feature_flat = reshape(val_feature, [], val_size);
+val_label_flat   = reshape(val_label, [], val_size);
 
-% Shuffle
-col_perm = randperm(batch_size);
-feature_flat = feature_flat(:, col_perm);
-label_flat   = label_flat(:, col_perm);
+% Shuffle training set
+col_perm = randperm(trn_size);
+trn_feature_flat = trn_feature_flat(:, col_perm);
+trn_label_flat   = trn_label_flat(:, col_perm);
 
-% Normalize
-norm_feature_flat = feature_flat ./ vecnorm(feature_flat, 2, 1);
-norm_label_flat   = label_flat ./ vecnorm(label_flat, 2, 1);
-
-% Data for regression toolbox
-reg_data = [feature_flat; label_flat]';
+% Combined set
+reg_feature = [trn_feature_flat, val_feature_flat];
+reg_label = [trn_label_flat, val_label_flat];
 
 % Save
-uisave({'feature_flat', 'label_flat', ...
-		'norm_feature_flat', 'norm_label_flat', ...
-		'reg_data', 'mid_point'}, ...
-		['../hyperplane_dataset/reg_dataset_', ...
+uisave({'trn_feature_flat', 'trn_label_flat', ...
+		'val_feature_flat', 'val_label_flat', ...
+		'reg_feature', 'reg_label', ...
+		'trn_size', 'val_size', ...
+		'trn_exps', 'val_exps', ...
+		'mid_point'}, ...
+		['../hyperplane_dataset/trn_val_dataset_', ...
 		datestr(now, 'yyyy-mm-dd_HH-MM')])
 
 % ======================================
@@ -71,23 +108,28 @@ model_name = 'midPoint';
 
 % Neural Network and Save
 % ===================
-% hidden_size = 40;
-% [net, tr] = nn(x, t, hidden_size, model_name);
+hidden_size = 40;
+[net, tr] = nn(reg_feature, reg_label, trn_size, val_size, hidden_size, model_name);
 % ===================
 
 % Gaussian Process and Save
 % ===================
-feature_dim = size(feature_flat, 1);
-label_dim   = size(label_flat, 1);
+label_dim   = size(trn_label_flat, 1);
 
 GPs = cell(1, label_dim);
+average_MSE = 0;
 
 parfor i = 1:label_dim
 	fprintf('Training GP: #%d / %d\n', i, label_dim)
 
-	[GPs{i}.trainedModel, GPs{i}.validation] = gp(reg_data, feature_dim, label_dim, i);
+	[GPs{i}.trainedModel, GPs{i}.MSE] = gp(trn_feature_flat, trn_label_flat, ...
+											val_feature_flat, val_label_flat, ...
+											i);
+	average_MSE = average_MSE + GPs{i}.MSE;
 end
+average_MSE = average_MSE / label_dim;
 
-uisave('GPs', sprintf('models/GP_%s_%s.mat', ...
+uisave('GPs', sprintf('models/GP_%s_%.5f_%s.mat', ...
 						model_name, ...
+						average_MSE, ...
 						datestr(now,'yyyy-mm-dd_HH-MM')) )
