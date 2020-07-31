@@ -5,10 +5,11 @@ clc
 
 %% Load dataset file
 % If reconstructing the features and labels is
-% necessary, load the file named 'hpp_data_*'
+% necessary, load the file named 'hpp_data_*.mat'
+
 % If you want to directly load the previously 
 % constructed feature-label, load the file named 
-% 'feature_label_*'
+% 'trn_val*.mat'
 [file, path] = uigetfile('../hyperplane_dataset/*.mat', 'Select Raw Dataset');
 load([path, file])
 
@@ -20,7 +21,7 @@ N = 20;
 
 % Select valid experiments
 valid_exps = [];
-for exp_num = 1:10
+for exp_num = 1:length(training_set)
 	training_data = training_set{exp_num};
 
 	if isempty(training_data)
@@ -106,13 +107,18 @@ uisave({'trn_feature_flat', 'trn_label_flat', ...
 %% Train
 model_name = 'midPoint';
 
-% Neural Network and Save
+% Check if the folder exists, otherwise create it
+if exist('./models/') ~= 7
+	mkdir('models')
+end
+
+%% Neural Network and Save
 % ===================
 hidden_size = 40;
 [net, tr] = nn(reg_feature, reg_label, trn_size, val_size, hidden_size, model_name);
 % ===================
 
-% Gaussian Process and Save
+%% Gaussian Process and Save
 % ===================
 label_dim   = size(trn_label_flat, 1);
 

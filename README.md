@@ -10,6 +10,10 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 07/31/2020
+1. Small modification of saving and loading.
+2. Added the movie recording function. (`learning/predict_vs_opt_midpoint.m`)
+
 ### 07/30/2020
 1. Manually divided the \~80% training set and 20% validation set for NN and GP (`learning/load_train_model.m`)
 2. Simplified the GP code, so that it only fits once, output compact model, and offer validation MSE. (`gp.m`)

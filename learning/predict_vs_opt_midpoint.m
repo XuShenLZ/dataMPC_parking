@@ -4,11 +4,14 @@ clear('all');
 close('all');
 clc
 
-%% Load Hyperplane Dataset and network
-[file, path] = uigetfile('../hyperplane_dataset/hpp*.mat', 'Select Raw Dataset');
+%% Load Hyperplane Dataset, Prediction Model, and validation exps
+[file, path] = uigetfile('../hyperplane_dataset/hpp*.mat', 'Select Raw Hyperplane Dataset');
 load([path, file])
-[file, path] = uigetfile('models/*.mat', 'Select Network Model');
+[file, path] = uigetfile('models/*.mat', 'Select Prediction Model');
 load([path, file])
+[file, path] = uigetfile('../hyperplane_dataset/trn_val*.mat', 'Select Train-Val Dataset');
+load([path, file], 'val_exps')
+fprintf('The exp_nums in validation set are: [%s]\n', num2str(val_exps, '%d,'))
 
 %% Load TV data
 exp_num = 2;
@@ -75,6 +78,7 @@ map_dim = [-30 30 -10 10];
 plot(TV.x, TV.y, 'k--');
 hold on
 
+F(T-N) = struct('cdata',[],'colormap',[]);
 for i = 1:T-N
     w = training_data(i).hyperplane.w;
     b = training_data(i).hyperplane.b;
@@ -125,6 +129,7 @@ for i = 1:T-N
     axis equal
     axis(map_dim);
     pause(0.2)
+    F(i) = getframe;
 %     input('Any key')
     
     % delete(p_EV)
@@ -137,3 +142,17 @@ for i = 1:T-N
     delete(t_s)
     delete(t_s_hat)
 end
+
+%% Save Movie
+if exist('./movies/') ~= 7
+    mkdir('movies')
+end
+
+[file,path] = uiputfile(sprintf('movies/%s_Exp%d_%s.mp4', ...
+                    model_type, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
+
+v = VideoWriter([path, file], 'MPEG-4');
+v.FrameRate = 10;
+open(v);
+writeVideo(v,F);
+close(v);
