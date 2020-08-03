@@ -4,7 +4,10 @@ clear('all');
 clc
 
 %% Load .mat file
-uiopen('load')
+% uiopen('load')
+exp_num = 4;
+exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+load(exp_file)
 
 %% Construct Obs Polytopes
 T_total = length(TV.t);
