@@ -12,6 +12,8 @@ Xu Shen, xu_shen@berkeley.edu
 ## Change log
 ### 08/03/2020
 1. Added the strategy generation (`nominal_M PC/check_strategy_labels.m` and `nominal_MPC/generat_strategy_data.m`) and its parallel datagen version for constructing dataset (`learning/strategy_datagen.m`).
+2. Changed `learning/loda_train_model.m` to `learning/load_train_regression.m` for the specific use of regression of hyperplane.
+3. Added `load_train_classify.m` for constructing dataset for strategy classification.
 
 ### 07/31/2020
 1. Small modification of saving and loading.
