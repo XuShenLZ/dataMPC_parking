@@ -69,7 +69,7 @@ function [training_data] = par_strategy_gen(exp_num, N)
 	    
 	if problem_type == 'Emergency Break'
 	    label = "Y"; % Yield
-	elseif problem_type == 'Successful Maneuver' || solution_status.problem_type(exp_num) == 'Collision Free'
+	elseif problem_type == 'Successful Maneuver' || problem_type == 'Collision Free'
 	    if rel_y > 0
 	        label = "R"; % Right
 	    else
