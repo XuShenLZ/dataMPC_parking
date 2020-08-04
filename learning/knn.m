@@ -19,7 +19,7 @@ function [trainedModel, val_acc] = knn(trn_feature, trn_label, val_feature, val_
         'Standardize', true, ...
         'ClassNames', {'L'; 'R'; 'Y'});
 
-    trainedModel = compact(classificationEnsemble);
+    trainedModel = compact(classificationKNN);
     
     %% =============== Validation
 

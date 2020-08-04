@@ -79,23 +79,52 @@ trn_size = size(trn_feature, 3);
 trn_feature_flat = reshape(trn_feature, [], trn_size);
 trn_label_flat   = reshape(trn_label, [], trn_size);
 
+trn_label_onehot = zeros(3, trn_size);
+for i = 1:trn_size
+	switch trn_label_flat(i)
+		case "L"
+			onehot = [1;0;0];
+		case "R"
+			onehot = [0;1;0];
+		otherwise
+			onehot = [0;0;1];
+	end
+	trn_label_onehot(:, i) = onehot;
+end
+
 val_size = size(val_feature, 3);
 val_feature_flat = reshape(val_feature, [], val_size);
 val_label_flat   = reshape(val_label, [], val_size);
+
+val_label_onehot = zeros(3, val_size);
+for i = 1:val_size
+	switch val_label_flat(i)
+		case "L"
+			onehot = [1;0;0];
+		case "R"
+			onehot = [0;1;0];
+		otherwise
+			onehot = [0;0;1];
+	end
+	val_label_onehot(:, i) = onehot;
+end
 
 % Shuffle training set
 col_perm = randperm(trn_size);
 trn_feature_flat = trn_feature_flat(:, col_perm);
 trn_label_flat   = trn_label_flat(:, col_perm);
+trn_label_onehot = trn_label_onehot(:, col_perm);
 
 % Combined set
 clas_feature = [trn_feature_flat, val_feature_flat];
 clas_label = [trn_label_flat, val_label_flat];
+clas_label_onehot = [trn_label_onehot, val_label_onehot];
 
 % Save
 uisave({'trn_feature_flat', 'trn_label_flat', ...
 		'val_feature_flat', 'val_label_flat', ...
-		'clas_feature', 'clas_label', ...
+		'trn_label_onehot', 'val_label_onehot', ...
+		'clas_feature', 'clas_label', 'clas_label_onehot', ...
 		'trn_size', 'val_size', ...
 		'trn_exps', 'val_exps'}, ...
 		['../hyperplane_dataset/strat_trn_val_dataset_', ...
@@ -141,3 +170,10 @@ uisave({'trainedModel', 'val_acc'}, sprintf('models/gSVM_K%d_ACC%.5f_%s.mat', ..
 						KernelScale, ...
 						val_acc, ...
 						datestr(now,'yyyy-mm-dd_HH-MM')) )
+
+
+%% Neural Network
+% ===================
+hidden_size = 40;
+model_name = "strategy";
+[net,tr] = nn_clas(clas_feature, clas_label_onehot, trn_size, val_size, hidden_size, model_name);
