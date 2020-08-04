@@ -100,3 +100,41 @@ uisave({'trn_feature_flat', 'trn_label_flat', ...
 		'trn_exps', 'val_exps'}, ...
 		['../hyperplane_dataset/strat_trn_val_dataset_', ...
 		datestr(now, 'yyyy-mm-dd_HH-MM'), '.mat'])
+% ==============================
+
+%% Train
+
+% Check if the folder exists, otherwise create it
+if exist('./models/') ~= 7
+	mkdir('models')
+end
+
+%% Bagged Tree and Save
+% ===================
+[trainedModel, val_acc] = bagTree(trn_feature, trn_label, val_feature, val_label);
+
+uisave({'trainedModel', 'val_acc'}, sprintf('models/bagTree_%.5f_%s.mat', ...
+						val_acc, ...
+						datestr(now,'yyyy-mm-dd_HH-MM')) )
+% ===================
+
+%% KNN and save
+% ===================
+nn_k = 10;
+[trainedModel, val_acc] = knn(trn_feature, trn_label, val_feature, val_label, nn_k);
+
+uisave({'trainedModel', 'val_acc'}, sprintf('models/knn_K%d_%.5f_%s.mat', ...
+						nn_k, ...
+						val_acc, ...
+						datestr(now,'yyyy-mm-dd_HH-MM')) )
+% ===================
+
+%% Gaussian SVM
+% ===================
+KernelScale = 10;
+[trainedModel, val_acc] = gSVM(trn_feature, trn_label, val_feature, val_label, KernelScale);
+
+uisave({'trainedModel', 'val_acc'}, sprintf('models/gSVM_K%d_%.5f_%s.mat', ...
+						KernelScale, ...
+						val_acc, ...
+						datestr(now,'yyyy-mm-dd_HH-MM')) )
