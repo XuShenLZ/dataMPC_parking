@@ -3,7 +3,7 @@ function [trainedModel, val_acc] = gSVM(trn_feature, trn_label, val_feature, val
     % Extract predictors and response
     predictors = trn_feature';
 
-    response = trn_label(response_id, :)';
+    response = trn_label';
 
     isCategoricalPredictor = repmat(false, 1, size(trn_feature, 1));
 
@@ -34,4 +34,4 @@ function [trainedModel, val_acc] = gSVM(trn_feature, trn_label, val_feature, val
     correctPredictions = strcmp( strtrim(validationPredictions), strtrim(validationResponse));
     isMissing = cellfun(@(x) all(isspace(x)), validationResponse, 'UniformOutput', true);
     correctPredictions = correctPredictions(~isMissing);
-    validationAccuracy = sum(correctPredictions)/length(correctPredictions);
+    val_acc = sum(correctPredictions)/length(correctPredictions);
