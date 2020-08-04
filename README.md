@@ -10,6 +10,9 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 08/03/2020
+1. Added the strategy generation (`nominal_M PC/check_strategy_labels.m` and `nominal_MPC/generat_strategy_data.m`) and its parallel datagen version for constructing dataset (`learning/strategy_datagen.m`).
+
 ### 07/31/2020
 1. Small modification of saving and loading.
 2. Added the movie recording function. (`learning/predict_vs_opt_midpoint.m`)
