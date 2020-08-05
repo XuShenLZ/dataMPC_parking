@@ -175,5 +175,5 @@ uisave({'trainedModel', 'val_acc'}, sprintf('models/gSVM_K%d_ACC%.5f_%s.mat', ..
 %% Neural Network
 % ===================
 hidden_size = 40;
-model_name = "strategy";
+model_name = 'strategy';
 [net,tr] = nn_clas(clas_feature, clas_label_onehot, trn_size, val_size, hidden_size, model_name);

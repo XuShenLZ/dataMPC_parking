@@ -5,7 +5,7 @@ close('all');
 clc
 
 %% Load Strategy Dataset, Prediction Model, and validation exps
-model_type = "gSVM"; % knn, gSVM, bagTree, nn
+model_type = "nn"; % knn, gSVM, bagTree, nn
 [file, path] = uigetfile(sprintf('models/%s*.mat', model_type), 'Select Prediction Model');
 load([path, file])
 
@@ -16,7 +16,7 @@ load([path, file], 'val_exps')
 fprintf('The exp_nums in validation set are: [%s]\n', num2str(val_exps, '%d,'))
 
 %% Load TV data
-exp_num = 13;
+exp_num = 44;
 load(['../data/exp_num_', num2str(exp_num), '.mat'])
 
 training_data = training_set{exp_num};
@@ -74,6 +74,10 @@ axis(prob_dim)
 
 F(T-N) = struct('cdata',[],'colormap',[]);
 for i = 1:T-N
+    if EV.traj(1, i) > 30
+        break
+    end
+
     Y = training_data(i).Y;
 
     Y_hat = predicted_data(i).Y;
