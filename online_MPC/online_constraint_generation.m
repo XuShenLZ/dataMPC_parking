@@ -5,7 +5,7 @@ addpath('../nominal_MPC')
 
 %% Load testing data
 % uiopen('load')
-exp_num = 4;
+exp_num = 2;
 exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -23,11 +23,14 @@ y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 
 EV_plt_opts.circle = true;
+EV_plt_opts.frame = true;
 EV_plt_opts.color = 'b';
 EV_plt_opts.alpha = 0.5;
 
 TV_plt_opts.circle = false;
 TV_plt_opts.color = 'y';
+
+cmap = jet(N+1);
 
 map_dim = [-30 30 -10 10];
 p_EV = [];
@@ -91,7 +94,7 @@ for i = 1:T-N
     end
     
     % Generate reference trajectory
-    EV_x_ref = EV_x + [1:N]*dt*v_ref;
+    EV_x_ref = EV_x + [0:N]*dt*v_ref;
     EV_y_ref = zeros(1, length(EV_x_ref));
     
     % Check which points along the reference trajectory would result in
@@ -100,45 +103,52 @@ for i = 1:T-N
     % occupied by the target vehicle at step k along the prediction horizon
     % and B(r) is the 2D ball with radius equal to the collision buffer
     % radius of the ego vehicle
-    hyp(1).w = [];
-    hyp(1).b = [];
-    hyp(1).pos = [];
-    for j = 1:N
+    for j = 1:N+1
         ref = [EV_x_ref(j); EV_y_ref(j)];
-        if check_collision(ref, TV_x(j+1), TV_y(j+1), TV_th(j+1), TV.width, TV.length, r)
+        if check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r)
             if max_idx == 1
                 dir = [0; 1];
             elseif max_idx == 2
                 dir = [0; -1];
             else
-                dir = [EV_x-TV_x(j+1); EV_y-TV_y(j+1)];
+                dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
                 dir = dir/(norm(dir));
             end
-            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j+1), TV_y(j+1), TV_th(j+1), TV.width, TV.length, r);
-            hyp(j+1).w = hyp_w;
-            hyp(j+1).b = hyp_b;
-            hyp(j+1).pos = hyp_xy;
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+            hyp(j).w = hyp_w;
+            hyp(j).b = hyp_b;
+            hyp(j).pos = hyp_xy;
         else
-            hyp(j+1).w = [];
-            hyp(j+1).b = [];
-            hyp(j+1).pos = [];
+            hyp(j).w = [];
+            hyp(j).b = [];
+            hyp(j).pos = [];
         end
     end
     
     % Plot
     t_Y = text(-25, 8, sprintf('Strategy: %s', Y), 'color', 'k');
     hold on
+    [p_EV, l_EV] = plotCar(EV_x, EV_y, EV_th, EV.width, EV.length, EV_plt_opts);
+    
     p_TV = [];
     l_TV = [];
     for j = 1:N+1
-        TV_plt_opts.alpha = 1 - 0.7*((j-1)/(N));
+%         TV_plt_opts.alpha = 1 - 0.7*((j-1)/(N));
+        if j == 1
+            TV_plt_opts.alpha = 0.5;
+            TV_plt_opts.frame = true;
+        else
+            TV_plt_opts.alpha = 0;
+            TV_plt_opts.frame = false;
+        end
+        
         [p, l] = plotCar(TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, TV_plt_opts);
         p_TV = [p_TV, p];
         l_TV = [l_TV, l];
         
         if ~isempty(hyp(j).w)
             coll_bound_global = R(TV_th(j))*[coll_bound_x; coll_bound_y] + [TV_x(j); TV_y(j)];
-            l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'r')];
+            l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
             if hyp(j).w(2) == 0
                 hyp_x = [hyp(j).b, hyp(j).b];
                 hyp_y = [map_dim(3), map_dim(4)];
@@ -146,12 +156,12 @@ for i = 1:T-N
                 hyp_x = [map_dim(1), map_dim(2)];
                 hyp_y = (-hyp(j).w(1)*hyp_x+hyp(j).b)/hyp(j).w(2);
             end
-            l_TV = [l_TV plot(hyp_x, hyp_y, 'b')];
-            l_TV = [l_TV plot(hyp(j).pos(1), hyp(j).pos(2), 'ro')];
+            l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
+            l_TV = [l_TV plot([EV_x_ref(j) hyp(j).pos(1)], [EV_y_ref(j) hyp(j).pos(2)], '-o', 'color', cmap(j,:))];
         end
+        l_TV = [l_TV plot(EV_x_ref(j), EV_y_ref(j), 'o', 'color', cmap(j,:))];
     end
-    [p_EV, l_EV] = plotCar(EV_x, EV_y, EV_th, EV.width, EV.length, EV_plt_opts);
-    t_EV_ref = plot(EV_x_ref, EV_y_ref, 'go');
+    
     axis equal
     axis(map_dim);
     
