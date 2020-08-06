@@ -5,7 +5,7 @@ addpath('../nominal_MPC')
 
 %% Load testing data
 % uiopen('load')
-exp_num = 2;
+exp_num = 30;
 exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -103,9 +103,12 @@ for i = 1:T-N
     % occupied by the target vehicle at step k along the prediction horizon
     % and B(r) is the 2D ball with radius equal to the collision buffer
     % radius of the ego vehicle
+    horizon_collision = [];
     for j = 1:N+1
         ref = [EV_x_ref(j); EV_y_ref(j)];
-        if check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r)
+        collision = check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+        horizon_collision = [horizon_collision, collision];
+        if collision
             if max_idx == 1
                 dir = [0; 1];
             elseif max_idx == 2
@@ -165,6 +168,6 @@ for i = 1:T-N
     axis equal
     axis(map_dim);
     
-    pause(0.1)
+    pause(0.05)
 %     input('Any key')
 end
