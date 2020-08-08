@@ -186,27 +186,69 @@ for i = 1:T-N
         end
     end
 
-    % Online Controller
-    z0 = EV.traj(:, end);
-    z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
-    [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, Y, z_ref, EV);
-    if ~feas
-        warning('Not Optimal')
+    % Parallel Online Controller
+    % =======
+    zz0{1} = EV.traj(:, end);
+    zz0{2} = NEV.traj(:, end);
+    zz_ref{1} = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    zz_ref{2} = [NEV.traj(1, end) + [0:N]*dt*v_ref; ...
+                 zeros(2, N+1); 
+                 v_ref*ones(1, N+1)];
+    zz_opt = cell(1,2);
+    uu_opt = cell(1,2);
+    par_feas = zeros(1,2);
+
+    parfor j = 1:2
+        z0 = zz0{j};
+        z_ref = zz_ref{j};
+        if j == 1
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = hpp_CFTOC(z0, N, hyp, Y, z_ref, EV);
+            if ~par_feas(j)
+                warning('HPP Not Feasible')
+            end
+        else
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = niv_CFTOC(z0, N, TV_pred, r, z_ref, NEV);
+            if ~par_feas(j)
+                warning('Naive Not Feasible')
+            end
+        end
     end
+    feas = par_feas(1);
+    z_opt = zz_opt{1};
+    u_opt = uu_opt{1};
     EV.traj = [EV.traj, z_opt(:, 2)];
     EV.inputs = [EV.inputs, u_opt(:, 1)];
 
-    % Naive Online Controller
-    z0_niv = NEV.traj(:, end);
-    z_ref_niv = [z0(1) + [0:N]*dt*v_ref; ...
-                 zeros(2, N+1); 
-                 v_ref*ones(1, N+1)];
-    [z_niv, u_niv, feas_niv] = niv_CFTOC(z0_niv, N, TV_pred, r, z_ref_niv, NEV);
-    if ~feas_niv
-        warning('Not Optimal')
-    end
+    feas_niv = par_feas(2);
+    z_niv = zz_opt{2};
+    u_niv = uu_opt{2};
     NEV.traj = [NEV.traj, z_niv(:, 2)];
     NEV.inputs = [NEV.inputs, u_niv(:, 1)];
+    % ============
+
+    % Sequencial Online Controller
+    % ============ 
+    % z0 = EV.traj(:, end);
+    % z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    % [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, Y, z_ref, EV);
+    % if ~feas
+    %     warning('Not Optimal')
+    % end
+    % EV.traj = [EV.traj, z_opt(:, 2)];
+    % EV.inputs = [EV.inputs, u_opt(:, 1)];
+
+    % % Naive Online Controller
+    % z0_niv = NEV.traj(:, end);
+    % z_ref_niv = [z0_niv(1) + [0:N]*dt*v_ref; ...
+    %              zeros(2, N+1); 
+    %              v_ref*ones(1, N+1)];
+    % [z_niv, u_niv, feas_niv] = niv_CFTOC(z0_niv, N, TV_pred, r, z_ref_niv, NEV);
+    % if ~feas_niv
+    %     warning('Not Optimal')
+    % end
+    % NEV.traj = [NEV.traj, z_niv(:, 2)];
+    % NEV.inputs = [NEV.inputs, u_niv(:, 1)];
+    % ==============
 
     % Plot
     axes(ax1);
