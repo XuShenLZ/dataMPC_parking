@@ -122,11 +122,11 @@ for i = 1:T-N
     score = net(X);
     [~, max_idx] = max(score);
     if max_idx == 1
-        Y = 'Left';
+        Y = "Left";
     elseif max_idx == 2
-        Y = 'Right';
+        Y = "Right";
     else
-        Y = 'Yield';
+        Y = "Yield";
     end
     
     % Generate reference trajectory
