@@ -81,7 +81,20 @@ end
 R = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 F(T-N) = struct('cdata',[],'colormap',[]);
-fig = figure();
+
+fig = figure('units','normalized','outerposition',[0 0 1 1]);
+
+ax1 = subplot(2,1,1);
+
+ax2 = subplot(2,1,2);
+L_line = animatedline(ax2, 'color', '#0072BD', 'linewidth', 2);
+R_line = animatedline(ax2, 'color', '#D95319', 'linewidth', 2);
+Y_line = animatedline(ax2, 'color', '#77AC30', 'linewidth', 2);
+legend('Left', 'Right', 'Yield')
+prob_dim = [1 T-N -0.2 1.2];
+axis(prob_dim)
+grid on
+
 for i = 1:T-N
     delete(p_EV)
     delete(l_EV)
@@ -101,6 +114,11 @@ for i = 1:T-N
     EV_y  = EV.traj(2, end);
     EV_th = EV.traj(3, end);
     EV_v  = EV.traj(4, end);
+
+    if EV_x > map_dim(2)
+        F(i:end) = [];
+        break
+    end
     
     EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
     
@@ -128,6 +146,10 @@ for i = 1:T-N
     else
         Y = "Yield";
     end
+
+    addpoints(L_line, i, score(1));
+    addpoints(R_line, i, score(2));
+    addpoints(Y_line, i, score(3));
     
     % Generate reference trajectory
     EV_x_ref = EV_x + [0:N]*dt*v_ref;
@@ -176,7 +198,7 @@ for i = 1:T-N
 
     % Naive Online Controller
     z0_niv = NEV.traj(:, end);
-    z_ref_niv = [z0(1) + [0:N]*dt*v_ref;; ...
+    z_ref_niv = [z0(1) + [0:N]*dt*v_ref; ...
                  zeros(2, N+1); 
                  v_ref*ones(1, N+1)];
     [z_niv, u_niv, feas_niv] = niv_CFTOC(z0_niv, N, TV_pred, r, z_ref_niv, NEV);
@@ -187,6 +209,7 @@ for i = 1:T-N
     NEV.inputs = [NEV.inputs, u_niv(:, 1)];
 
     % Plot
+    axes(ax1);
     t_Y = text(-25, 8, sprintf('Strategy: %s', Y), 'color', 'k');
     hold on
     t_hyp_feas = text(-25, 6, sprintf('HPP Online MPC feas: %d', feas), 'color', 'b');
@@ -234,6 +257,11 @@ for i = 1:T-N
     
     axis equal
     axis(map_dim);
+
+    axes(ax2)
+    drawnow
+    axis auto
+    axis(prob_dim);
     
     pause(0.05)
     F(i) = getframe(fig);
