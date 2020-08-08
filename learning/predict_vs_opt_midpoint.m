@@ -144,11 +144,11 @@ for i = 1:T-N
 end
 
 %% Save Movie
-if exist('./movies/') ~= 7
-    mkdir('movies')
+if ~isfolder('../movies/')
+    mkdir('../movies')
 end
 
-[file,path] = uiputfile(sprintf('movies/%s_Exp%d_%s.mp4', ...
+[file,path] = uiputfile(sprintf('../movies/%s_Exp%d_%s.mp4', ...
                     model_type, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
 
 v = VideoWriter([path, file], 'MPEG-4');

@@ -108,8 +108,8 @@ uisave({'trn_feature_flat', 'trn_label_flat', ...
 model_name = 'midPoint';
 
 % Check if the folder exists, otherwise create it
-if exist('./models/') ~= 7
-	mkdir('models')
+if ~isfolder('../models/')
+	mkdir('../models')
 end
 
 %% Neural Network and Save
@@ -135,7 +135,7 @@ parfor i = 1:label_dim
 end
 average_MSE = average_MSE / label_dim;
 
-uisave('GPs', sprintf('models/GP_%s_%.5f_%s.mat', ...
+uisave('GPs', sprintf('../models/GP_%s_%.5f_%s.mat', ...
 						model_name, ...
 						average_MSE, ...
 						datestr(now,'yyyy-mm-dd_HH-MM')) )
