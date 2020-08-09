@@ -37,13 +37,7 @@ function [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, strategy, z_ref, EV)
 			b = hyp(k).b;
 			z_WS(1:2, k) = hyp(k).pos;
 
-			if strategy == "Left"
-				constr = [constr, w(1)*(z(1, k)+offset*cos(z(3,k))) + w(2)*(z(2, k)+offset*sin(z(3,k))) >= b];
-			elseif strategy == "Right"
-				constr = [constr, w(1)*(z(1, k)+offset*cos(z(3,k))) + w(2)*(z(2, k)+offset*sin(z(3,k))) <= b];
-			else
-				error('Yield Strategy is not defined');
-			end
+			constr = [constr, w(1)*(z(1, k)+offset*cos(z(3,k))) + w(2)*(z(2, k)+offset*sin(z(3,k))) >= b];
 		end
 
 		obj = obj + 0.01*u(1, k)^2 + 0.01*u(2, k)^2 ...
@@ -58,13 +52,8 @@ function [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, strategy, z_ref, EV)
 		b = hyp(N+1).b;
 		z_WS(1:2, N+1) = hyp(N+1).pos;
 
-		if strategy == "Left"
-			constr = [constr, w(1)*(z(1, N+1)+offset*cos(z(3,N+1))) + w(2)*(z(2, N+1)+offset*sin(z(3,N+1))) >= b];
-		elseif strategy == "Right"
-			constr = [constr, w(1)*(z(1, N+1)+offset*cos(z(3,N+1))) + w(2)*(z(2, N+1)+offset*sin(z(3,N+1))) <= b];
-		else
-			error('Yield Strategy is not defined');
-		end
+		constr = [constr, w(1)*(z(1, N+1)+offset*cos(z(3,N+1))) + w(2)*(z(2, N+1)+offset*sin(z(3,N+1))) >= b];
+
 	end
 
 	% Assignment
