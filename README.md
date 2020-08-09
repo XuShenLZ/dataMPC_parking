@@ -13,7 +13,7 @@ Xu Shen, xu_shen@berkeley.edu
 ### 08/07/2020
 1. Moved `learning/models` into `./models`
 2. Created folder `./online_MPC` and computed the hyperplane online (Edward)
-3. Designed the online MPC controller based on the computed hyperplane, and compare it with the naive formulation.
+3. Designed the online MPC controller based on the computed hyperplane, and compare it with the naive formulation. `online_MPC/online_hppMPC.m` compares the hyperplane constrained circular model with naive circular one; `online_MPC/online_HOBCA.m` compares the "hpp warm-started" HOBCA with naive circular version.
 
 ### 08/04/2020
 1. Added NN classifier for strategy prediction (`learning/nn_clas.m`) and added one-hot label variables for it (`learning/load_train_classify.m`)

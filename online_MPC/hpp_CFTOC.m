@@ -1,5 +1,5 @@
 %% hpp_CFTOC: path tracking with generated hyperplanes 
-function [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, strategy, z_ref, EV)
+function [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, z_ref, EV)
 	% disp('Solving the online controller')
 
 	dt = EV.dt;
@@ -41,9 +41,9 @@ function [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, strategy, z_ref, EV)
 		end
 
 		obj = obj + 0.01*u(1, k)^2 + 0.01*u(2, k)^2 ...
-				+ 0.5*(z(4, k+1) - z_ref(4, k))^2 ...
-				+ 0.1*(z(2, k+1) - z_ref(2, k))^2 ...
-				+ 0.1*(z(3, k+1) - z_ref(3, k))^2;
+				+ 0.5*(z(1, k) - z_ref(1, k))^2 ...
+				+ 0.1*(z(2, k) - z_ref(2, k))^2 ...
+				+ 0.1*(z(3, k) - z_ref(3, k))^2;
 	end
 
 	% Terminal Constraint
@@ -53,8 +53,11 @@ function [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, strategy, z_ref, EV)
 		z_WS(1:2, N+1) = hyp(N+1).pos;
 
 		constr = [constr, w(1)*(z(1, N+1)+offset*cos(z(3,N+1))) + w(2)*(z(2, N+1)+offset*sin(z(3,N+1))) >= b];
-
 	end
+
+	obj = obj + 0.5*(z(1, N+1) - z_ref(1, N+1))^2 ...
+				+ 0.1*(z(2, N+1) - z_ref(2, N+1))^2 ...
+				+ 0.1*(z(3, N+1) - z_ref(3, N+1))^2;
 
 	% Assignment
 	assign(z, z_WS);

@@ -26,7 +26,6 @@ r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
 NEV = EV;
-HEV = EV;
 
 % Clear the traj and inputs field
 EV.traj = EV.traj(:, 1);
@@ -34,9 +33,6 @@ EV.inputs = [];
 
 NEV.traj = NEV.traj(:, 1);
 NEV.inputs = [];
-
-HEV.traj = HEV.traj(:, 1);
-HEV.inputs = [];
 
 OEV_plt_opts.circle = false;
 OEV_plt_opts.frame = false;
@@ -47,11 +43,6 @@ NEV_plt_opts.circle = false;
 NEV_plt_opts.frame = false;
 NEV_plt_opts.color = 'm';
 NEV_plt_opts.alpha = 0.5;
-
-HEV_plt_opts.circle = false;
-HEV_plt_opts.frame = false;
-HEV_plt_opts.color = 'c';
-HEV_plt_opts.alpha = 0.3;
 
 EV_plt_opts.circle = true;
 EV_plt_opts.frame = true;
@@ -70,16 +61,12 @@ p_OEV = [];
 l_OEV = [];
 p_NEV = [];
 l_NEV = [];
-p_HEV = [];
-l_HEV = [];
 p_TV = [];
 l_TV = [];
 t_EV_ref = [];
 t_Y = [];
 t_hyp_feas = [];
 t_niv_feas = [];
-t_h_feas = [];
-p_online = [];
 
 phi = linspace(0, 2*pi, 200);
 coll_bound_x = zeros(1, 200);
@@ -117,9 +104,6 @@ for i = 1:T-N
     delete(p_NEV)
     delete(l_NEV)
 
-    delete(p_HEV)
-    delete(l_HEV)
-
     delete(p_TV)
     delete(l_TV)
 
@@ -128,7 +112,6 @@ for i = 1:T-N
     delete(t_Y)
     delete(t_hyp_feas)
     delete(t_niv_feas)
-    delete(t_h_feas)
     
     % Get x, y, heading, and velocity from ego vehicle at current timestep
     EV_x  = EV.traj(1, end);
@@ -223,7 +206,7 @@ for i = 1:T-N
         z0 = zz0{j};
         z_ref = zz_ref{j};
         if j == 1
-            [zz_opt{j}, uu_opt{j}, par_feas(j)] = hpp_CFTOC(z0, N, hyp, Y, z_ref, EV);
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = hpp_CFTOC(z0, N, hyp, z_ref, EV);
             if ~par_feas(j)
                 warning('HPP Not Feasible')
             end
@@ -245,18 +228,6 @@ for i = 1:T-N
     u_niv = uu_opt{2};
     NEV.traj = [NEV.traj, z_niv(:, 2)];
     NEV.inputs = [NEV.inputs, u_niv(:, 1)];
-
-    % Online HOBCA
-    z0_h = HEV.traj(:, end);
-    z_ref_h = [z0_h(1) + [0:N]*dt*v_ref; ...
-                 zeros(2, N+1); 
-                 v_ref*ones(1, N+1)];
-    [z_h, u_h, feas_h] = online_HOBCA(z0_h, N, TV_pred, r, z_ref_h, HEV);
-    if ~feas_h
-        warning('HOBCA Not Feasible')
-    end
-    HEV.traj = [HEV.traj, z_h(:, 2)];
-    HEV.inputs = [HEV.inputs, u_h(:, 1)];
     % ============
 
     % Sequencial Online Controller
@@ -291,14 +262,10 @@ for i = 1:T-N
     hold on
     t_niv_feas = text(-25, 4, sprintf('Naive Online MPC feas: %d', feas_niv), 'color', 'm');
     hold on
-    t_h_feas = text(-25, 2, sprintf('HOBCA Online MPC feas: %d', feas_h), 'color', 'c');
-    hold on
 
     [p_OEV, l_OEV] = plotCar(OEV.traj(1, i), OEV.traj(2, i), OEV.traj(3, i), OEV.width, OEV.length, OEV_plt_opts);
     [p_NEV, l_NEV] = plotCar(NEV.traj(1, i), NEV.traj(2, i), NEV.traj(3, i), NEV.width, NEV.length, NEV_plt_opts);
     [p_EV, l_EV] = plotCar(EV_x, EV_y, EV_th, EV.width, EV.length, EV_plt_opts);
-    [p_HEV, l_HEV] = plotCar(HEV.traj(1, i), HEV.traj(2, i), HEV.traj(3, i), HEV.width, HEV.length, HEV_plt_opts);
-
     
     p_TV = [];
     l_TV = [];
@@ -332,7 +299,6 @@ for i = 1:T-N
         l_TV = [l_TV plot(EV_x_ref(j), EV_y_ref(j), 'o', 'color', cmap(j,:))];
         l_TV = [l_TV plot(z_niv(1, j), z_niv(2, j), 'x', 'color', 'm')];
         l_TV = [l_TV plot(z_opt(1, j), z_opt(2, j), 'd', 'color', cmap(j,:))];
-        l_TV = [l_TV plot(z_h(1, j), z_h(2, j), '*', 'color', 'c')];
     end
     
     axis equal
@@ -353,7 +319,7 @@ if ~isfolder('../movies/')
     mkdir('../movies')
 end
 
-movie_name = "OnlineMPC";
+movie_name = "hppMPC";
 [file,path] = uiputfile(sprintf('../movies/%s_Exp%d_%s.mp4', ...
                     movie_name, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
 

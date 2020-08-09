@@ -1,203 +1,290 @@
-%% online_HOBCA: function description
-function [z_opt, u_opt, feas] = online_HOBCA(z0, N, TV_pred, R, z_ref, EV)
+clear('all');
+close('all');
+clc
 
-	disp('Online HOBCA');
+addpath('../nominal_MPC')
 
-	% Naive State Warm Start
-	[z_WS, u_WS, feas] = niv_CFTOC(z0, N, TV_pred, R, z_ref, EV);
+%% Load testing data
+% uiopen('load')
+exp_num = 30;
+exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+load(exp_file)
 
-	% Construct Polyhedra
-	for t = 1:N+1
-		center_x = TV_pred(1, t);
-		center_y = TV_pred(2, t);
-		heading = TV_pred(3, t);
-		len = EV.length;
-		wid = EV.width;
+%% Load strategy prediction model
+model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
+model_file = strcat('../models/', model_name, '.mat');
+load(model_file)
 
-		% Target Vehicle
-		Vx = [center_x + len/2*cos(heading) - wid/2*sin(heading);
-			  center_x + len/2*cos(heading) + wid/2*sin(heading);
-			  center_x - len/2*cos(heading) + wid/2*sin(heading);
-			  center_x - len/2*cos(heading) - wid/2*sin(heading)];
+%%
+N = 20; % Prediction horizon
+dt = EV.dt; % Time step
+T = length(TV.t); % Length of data
+v_ref = EV.ref_v; % Reference velocity
+y_ref = EV.ref_y; % Reference y
+r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 
-		Vy = [center_y + len/2*sin(heading) + wid/2*cos(heading);
-			  center_y + len/2*sin(heading) - wid/2*cos(heading);
-			  center_y - len/2*sin(heading) - wid/2*cos(heading);
-			  center_y - len/2*sin(heading) + wid/2*cos(heading)];
+% Make a copy of EV as the optimal EV, and naive EV
+OEV = EV;
+NEV = EV;
 
-		ob_V = [Vx, Vy];
+% Clear the traj and inputs field
+EV.traj = EV.traj(:, 1);
+EV.inputs = [];
 
-		Obs{1, t} = Polyhedron('V', ob_V);
-	end
+NEV.traj = NEV.traj(:, 1);
+NEV.inputs = [];
 
-	% Number of obstacles
-	nOb = size(Obs, 1);
-	
-	% Number of hyperplanes
-	nHp = [];
-	for j = 1:nOb
-		nHp = [nHp, length(Obs{j, 1}.b)];
-	end
+OEV_plt_opts.circle = false;
+OEV_plt_opts.frame = false;
+OEV_plt_opts.color = 'g';
+OEV_plt_opts.alpha = 0.5;
 
-	L = EV.L;
-	G = EV.G;
-	g = EV.g;
-	dt = EV.dt;
+NEV_plt_opts.circle = false;
+NEV_plt_opts.frame = false;
+NEV_plt_opts.color = 'm';
+NEV_plt_opts.alpha = 0.5;
 
-	offset = EV.offset;
+EV_plt_opts.circle = true;
+EV_plt_opts.frame = true;
+EV_plt_opts.color = 'b';
+EV_plt_opts.alpha = 0.5;
 
-	disp('Solving DualMultWS Model...');
+TV_plt_opts.circle = false;
+TV_plt_opts.color = 'y';
 
-	lambda = sdpvar(sum(nHp), N+1);
-	mu = sdpvar(4*nOb, N+1);
-	d  = sdpvar(nOb, N+1);
+cmap = jet(N+1);
 
-	obj = 0;
+map_dim = [-30 30 -10 10];
+p_EV = [];
+l_EV = [];
+p_OEV = [];
+l_OEV = [];
+p_NEV = [];
+l_NEV = [];
+p_TV = [];
+l_TV = [];
+t_EV_ref = [];
+t_Y = [];
+t_niv_feas = [];
+t_h_feas = [];
 
-	constr = [lambda(:) >= 0];
-	constr = [constr, mu(:) >= 0];
+phi = linspace(0, 2*pi, 200);
+coll_bound_x = zeros(1, 200);
+coll_bound_y = zeros(1, 200);
+for i = 1:length(phi)
+    [x_b, y_b, ~, ~] = get_collision_boundary_point(0, 0, phi(i), TV.width, TV.length, r);
+    coll_bound_x(i) = x_b;
+    coll_bound_y(i) = y_b;
+end
 
-	for k = 1:N+1
+R = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
-		% t = [z_WS(1,k) + offset*cos(z_WS(3,k)); z_WS(2,k) + offset*sin(z_WS(3,k))];
-		t = [z_WS(1,k); z_WS(2,k)];
-		R = [cos(z_WS(3,k)), -sin(z_WS(3,k)); sin(z_WS(3,k)), cos(z_WS(3,k))];
+F(T-N) = struct('cdata',[],'colormap',[]);
 
-		for j = 1:nOb
-			A = Obs{j, k}.A;
-			b = Obs{j, k}.b;
+fig = figure('units','normalized','outerposition',[0 0 1 1]);
 
-			idx0 = sum( nHp(1:j-1) ) + 1;
-			idx1 = sum( nHp(1:j) );
-			lambda_j = lambda(idx0:idx1, k);
-			mu_j = mu((j-1)*4+1:j*4, k);
-		
-			constr = [constr, -g'*mu_j + (A*t - b)' * lambda_j == d(j, k)];
+ax1 = subplot(2,1,1);
 
-			constr = [constr, G'*mu_j + R'*A'*lambda_j == zeros(2,1)];
+ax2 = subplot(2,1,2);
+L_line = animatedline(ax2, 'color', '#0072BD', 'linewidth', 2);
+R_line = animatedline(ax2, 'color', '#D95319', 'linewidth', 2);
+Y_line = animatedline(ax2, 'color', '#77AC30', 'linewidth', 2);
+legend('Left', 'Right', 'Yield')
+prob_dim = [1 T-N -0.2 1.2];
+axis(prob_dim)
+grid on
 
-			constr = [constr, norm(A'*lambda_j) <= 1];
+for i = 1:T-N
+    delete(p_EV)
+    delete(l_EV)
 
-			obj = obj - d(j, k);
-		end
+    delete(p_OEV)
+    delete(l_OEV)
 
-	end
+    delete(p_NEV)
+    delete(l_NEV)
 
-	ops = sdpsettings('solver', 'ipopt', 'verbose', 0);
+    delete(p_TV)
+    delete(l_TV)
 
-	ops.ipopt.tol = 1e-2;
-	ops.ipopt.constr_viol_tol = 1e-3;
-	ops.ipopt.max_iter = 300;
+    delete(t_EV_ref)
 
-	diagnostics = optimize(constr, obj, ops);
-
-	if diagnostics.problem == 0
-		disp('Solved');
-	else
-		yalmiperror(diagnostics.problem)
-	end
-	
-	mu_WS = value(mu);
-	lambda_WS = value(lambda);
-
-	% OBCA
-	dmin = 0.001;
-
-	disp('Solving Full Model...');
-
-	z = sdpvar(4, N+1);
-	u = sdpvar(2, N);
-	lambda = sdpvar(sum(nHp), N+1);
-	mu = sdpvar(4*nOb, N+1);
-
-	constr = [lambda(:) >= 0];
-	constr = [constr, mu(:) >= 0];
-
-	% Initial State
-	constr = [constr, z(1, 1) == z0(1) - offset*cos(z0(3))];
-	constr = [constr, z(2, 1) == z0(2) - offset*sin(z0(3))];
-	constr = [constr, z(3:4, 1) == z0(3:4)];
-
-	obj = 0;
-
-	for k = 1:N
-
-		constr = [constr, -0.6 <= u(1, k) <= 0.6];
-		constr = [constr, -0.5 <= u(2, k) <= 0.5];
-
-		if k < N
-			constr = [constr, -0.2 <= u(1, k+1) - u(1, k) <= 0.2];
-			constr = [constr, -0.3 <= u(2, k+1) - u(2, k) <= 0.3];
-		end
-
-		constr = [constr, z(:, k+1) == bikeFE(z(:,k), u(:, k), L, dt)];
-
-		obj = obj + 0.01*u(1, k)^2 + 0.01*u(2, k)^2;
-	end
-
-	for k = 1:N+1
-
-		t = [z(1,k) + offset*cos(z(3,k)); z(2,k) + offset*sin(z(3,k))];
-		% t = [z_WS(1,k); z_WS(2,k)];
-		R = [cos(z(3,k)), -sin(z(3,k)); sin(z(3,k)), cos(z(3,k))];
-
-		for j = 1:nOb
-			A = Obs{j, k}.A;
-			b = Obs{j, k}.b;
-
-			idx0 = sum( nHp(1:j-1) ) + 1;
-			idx1 = sum( nHp(1:j) );
-			lambda_j = lambda(idx0:idx1, k);
-			mu_j = mu((j-1)*4+1:j*4, k);
-
-			constr = [constr, -g'*mu_j + (A*t - b)' * lambda_j >= dmin];
-
-			constr = [constr, G'*mu_j + R'*A'*lambda_j == zeros(2,1)];
-
-			constr = [constr, lambda_j'*A*A'*lambda_j == 1];
-		end
-
-		obj = obj + 0.5*(z(1, k) - z_ref(1, k))^2 ...
-				+ 0.1*(z(2, k) - z_ref(2, k))^2 ...
-				+ 0.1*(z(3, k) - z_ref(3, k))^2;
-	end
-
-	%% Assignment
-	assign(z, z_WS);
-	assign(u, u_WS);
-	assign(mu, mu_WS);
-	assign(lambda, lambda_WS);
-
-	ops = sdpsettings('solver', 'ipopt', 'usex0', 1, 'verbose', 0);
+    delete(t_Y)
+    delete(t_h_feas)
+    delete(t_niv_feas)
     
-    % ops.fmincon.MaxIter = 35;
-    % ops.fmincon.OptimalityTolerance = 1e-3;
+    % Get x, y, heading, and velocity from ego vehicle at current timestep
+    EV_x  = EV.traj(1, end);
+    EV_y  = EV.traj(2, end);
+    EV_th = EV.traj(3, end);
+    EV_v  = EV.traj(4, end);
 
-	ops.ipopt.tol = 1e-2;
-	ops.ipopt.constr_viol_tol = 1e-3;
-	ops.ipopt.max_iter = 300;
-	% ops.ipopt.alpha_for_y = 'min';
-	% ops.ipopt.recalc_y = 'yes';
-	% ops.ipopt.mumps_mem_percent = 6000;
-	% ops.ipopt.min_hessian_perturbation = 1e-12;
+    if EV_x > map_dim(2)
+        F(i:end) = [];
+        break
+    end
+    
+    EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
+    
+    % Get x, y, heading, and velocity from target vehicle over prediction
+    % horizon
+    TV_x = TV.x(i:i+N);
+    TV_y = TV.y(i:i+N);
+    TV_th = TV.heading(i:i+N);
+    TV_v = TV.v(i:i+N);
+    
+    TV_pred = [TV_x, TV_y, TV_th, TV_v.*cos(TV_th), TV_v.*sin(TV_th)]';
+    
+    % Get target vehicle trajectory relative to ego vehicle state
+    rel_state = TV_pred - EV_curr;
+    
+    % Predict strategy to use based on relative prediction of target
+    % vehicle
+    X = reshape(rel_state, [], 1);
+    score = net(X);
+    [~, max_idx] = max(score);
+    if max_idx == 1
+        Y = "Left";
+    elseif max_idx == 2
+        Y = "Right";
+    else
+        Y = "Yield";
+    end
 
-	%% Solve
-	feas = 0;
-	diagnostics = optimize(constr, obj, ops);
+    addpoints(L_line, i, score(1));
+    addpoints(R_line, i, score(2));
+    addpoints(Y_line, i, score(3));
+    
+    % Generate reference trajectory
+    EV_x_ref = EV_x + [0:N]*dt*v_ref;
+    EV_y_ref = zeros(1, length(EV_x_ref));
+    
+    % Check which points along the reference trajectory would result in
+    % collision. Collision is defined as the reference point at step k 
+    % being contained in O_TV(k) + B(r), where O_TV(k) is the region
+    % occupied by the target vehicle at step k along the prediction horizon
+    % and B(r) is the 2D ball with radius equal to the collision buffer
+    % radius of the ego vehicle
+    horizon_collision = [];
+    for j = 1:N+1
+        ref = [EV_x_ref(j); EV_y_ref(j)];
+        collision = check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+        horizon_collision = [horizon_collision, collision];
+        if collision
+            if max_idx == 1
+                dir = [0; 1];
+            elseif max_idx == 2
+                dir = [0; -1];
+            else
+                dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
+                dir = dir/(norm(dir));
+            end
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+            hyp(j).w = hyp_w;
+            hyp(j).b = hyp_b;
+            hyp(j).pos = hyp_xy;
+        else
+            hyp(j).w = [];
+            hyp(j).b = [];
+            hyp(j).pos = [];
+        end
+    end
 
-	if diagnostics.problem == 0
-		disp('Solved');
-		feas = 1;
-	end
+    % ========== Controller
+    % Online HOBCA
+    z0 = EV.traj(:, end);
+    z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+    if ~feas
+        warning('HOBCA not feasible')
+    end
+    EV.traj = [EV.traj, z_opt(:, 2)];
+    EV.inputs = [EV.inputs, u_opt(:, 1)];
 
-	zz = value(z);
+    % Naive Online Controller
+    z0_niv = NEV.traj(:, end);
+    z_ref_niv = [z0_niv(1) + [0:N]*dt*v_ref; ...
+                 zeros(2, N+1); 
+                 v_ref*ones(1, N+1)];
+    [z_niv, u_niv, feas_niv] = niv_CFTOC(z0_niv, N, TV_pred, r, z_ref_niv, NEV);
+    if ~feas_niv
+        warning('Naive not feasible')
+    end
+    NEV.traj = [NEV.traj, z_niv(:, 2)];
+    NEV.inputs = [NEV.inputs, u_niv(:, 1)];
+    % ==============
 
-	for k = 1:N+1
-		z_opt(1, k)   = zz(1, k) + offset*cos(zz(3, k));
-		z_opt(2, k)   = zz(2, k) + offset*sin(zz(3, k));
-		z_opt(3:4, k) = zz(3:4, k);
-	end
+    % Plot
+    axes(ax1);
+    t_Y = text(-25, 8, sprintf('Strategy: %s', Y), 'color', 'k');
+    hold on
+    t_h_feas = text(-25, 6, sprintf('HOBCA Online MPC feas: %d', feas), 'color', 'b');
+    hold on
+    t_niv_feas = text(-25, 4, sprintf('Naive Online MPC feas: %d', feas_niv), 'color', 'm');
+    hold on
 
-	u_opt = value(u);
-	mu_opt = value(mu);
-	lambda_opt = value(lambda);
+    [p_OEV, l_OEV] = plotCar(OEV.traj(1, i), OEV.traj(2, i), OEV.traj(3, i), OEV.width, OEV.length, OEV_plt_opts);
+    [p_NEV, l_NEV] = plotCar(NEV.traj(1, i), NEV.traj(2, i), NEV.traj(3, i), NEV.width, NEV.length, NEV_plt_opts);
+    [p_EV, l_EV] = plotCar(EV_x, EV_y, EV_th, EV.width, EV.length, EV_plt_opts);
+    
+    p_TV = [];
+    l_TV = [];
+    for j = 1:N+1
+%         TV_plt_opts.alpha = 1 - 0.7*((j-1)/(N));
+        if j == 1
+            TV_plt_opts.alpha = 0.5;
+            TV_plt_opts.frame = true;
+        else
+            TV_plt_opts.alpha = 0;
+            TV_plt_opts.frame = false;
+        end
+        
+        [p, l] = plotCar(TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, TV_plt_opts);
+        p_TV = [p_TV, p];
+        l_TV = [l_TV, l];
+        
+        if ~isempty(hyp(j).w)
+            coll_bound_global = R(TV_th(j))*[coll_bound_x; coll_bound_y] + [TV_x(j); TV_y(j)];
+            l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
+            if hyp(j).w(2) == 0
+                hyp_x = [hyp(j).b, hyp(j).b];
+                hyp_y = [map_dim(3), map_dim(4)];
+            else
+                hyp_x = [map_dim(1), map_dim(2)];
+                hyp_y = (-hyp(j).w(1)*hyp_x+hyp(j).b)/hyp(j).w(2);
+            end
+            l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
+            l_TV = [l_TV plot([EV_x_ref(j) hyp(j).pos(1)], [EV_y_ref(j) hyp(j).pos(2)], '-o', 'color', cmap(j,:))];
+        end
+        l_TV = [l_TV plot(EV_x_ref(j), EV_y_ref(j), 'o', 'color', cmap(j,:))];
+        l_TV = [l_TV plot(z_niv(1, j), z_niv(2, j), 'x', 'color', 'm')];
+        l_TV = [l_TV plot(z_opt(1, j), z_opt(2, j), 'd', 'color', cmap(j,:))];
+    end
+    
+    axis equal
+    axis(map_dim);
+
+    axes(ax2)
+    drawnow
+    axis auto
+    axis(prob_dim);
+    
+    pause(0.05)
+    F(i) = getframe(fig);
+%     input('Any key')
+end
+
+%% Save Movie
+if ~isfolder('../movies/')
+    mkdir('../movies')
+end
+
+movie_name = "hobcaMPC";
+[file,path] = uiputfile(sprintf('../movies/%s_Exp%d_%s.mp4', ...
+                    movie_name, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
+
+v = VideoWriter([path, file], 'MPEG-4');
+v.FrameRate = 10;
+open(v);
+writeVideo(v,F);
+close(v);
