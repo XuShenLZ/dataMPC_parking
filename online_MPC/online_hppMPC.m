@@ -179,7 +179,15 @@ for i = 1:T-N
                 dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
                 dir = dir/(norm(dir));
             end
-            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+            % ==== Unbiased HPP
+            % [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+            % ==== Biased HPP
+            bias_dir = [-1; 0];
+            % bias_dir = [-cos(EV_th); -sin(EV_th)];
+            s = score(max_idx);
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_score_bias(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
+                TV.width, TV.length, r, bias_dir, s);
+            % =====
             hyp(j).w = hyp_w;
             hyp(j).b = hyp_b;
             hyp(j).pos = hyp_xy;

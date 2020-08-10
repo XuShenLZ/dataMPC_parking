@@ -10,6 +10,10 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 08/10/2020
+1. Generate the score-biased hyperplane (Edward)
+2. Add the option of score biased hyperplane into `online_MPC/online_HOBCA.m` and `online_MPC/online_hppMPC.m`
+
 ### 08/07/2020
 1. Moved `learning/models` into `./models`
 2. Created folder `./online_MPC` and computed the hyperplane online (Edward)
