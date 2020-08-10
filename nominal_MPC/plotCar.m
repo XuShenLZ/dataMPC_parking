@@ -15,6 +15,7 @@ function [p, l] = plotCar(center_x, center_y, heading, wid, len, plt_ops)
 		  center_y - len/2*sin(heading) + wid/2*cos(heading)];
 
 	p = [p patch(Vx, Vy, plt_ops.color, 'FaceAlpha', plt_ops.alpha)];
+    hold on
     
     if plt_ops.frame
         % Plot the body fixed frame

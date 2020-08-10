@@ -95,13 +95,6 @@ for i = 1:T-N
     X = reshape(rel_state, [], 1);
     score = net(X);
     [~, max_idx] = max(score);
-    if max_idx == 1
-        Y = 'Left';
-    elseif max_idx == 2
-        Y = 'Right';
-    else
-        Y = 'Yield';
-    end
     
     % Generate reference trajectory
     EV_x_ref = EV_x + [0:N]*dt*v_ref;
@@ -140,6 +133,13 @@ for i = 1:T-N
     
     % Plot
     subplot(2,1,1)
+    if max_idx == 1
+        Y = 'Left';
+    elseif max_idx == 2
+        Y = 'Right';
+    else
+        Y = 'Yield';
+    end
     t_Y = text(EV_x, EV_y+1.5*r, sprintf('Strategy: %s', Y), 'color', 'k');
     hold on
     [p_EV, l_EV] = plotCar(EV_x, EV_y, EV_th, EV.width, EV.length, EV_plt_opts);
@@ -147,7 +147,6 @@ for i = 1:T-N
     p_TV = [];
     l_TV = [];
     for j = 1:N+1
-%         TV_plt_opts.alpha = 1 - 0.7*((j-1)/(N));
         if j == 1
             TV_plt_opts.alpha = 0.5;
             TV_plt_opts.frame = true;
