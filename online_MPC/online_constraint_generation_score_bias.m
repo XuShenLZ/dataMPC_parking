@@ -5,7 +5,7 @@ addpath('../nominal_MPC')
 
 %% Load testing data
 % uiopen('load')
-exp_num = 30;
+exp_num = 2;
 exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -62,7 +62,7 @@ legend('Left', 'Right', 'Yield')
 prob_dim = [1 T-N -0.2 1.2];
 axis(prob_dim)
 
-for i = 1:T-N
+for i = 100:T-N
     delete(p_EV)
     delete(l_EV)
     delete(p_TV)
@@ -120,7 +120,12 @@ for i = 1:T-N
                 dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
                 dir = dir/(norm(dir));
             end
-            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+            bias_dir = [-1; 0];
+%             bias_dir = [-cos(EV_th); -sin(EV_th)];
+            s = score(max_idx);
+%             s = 1;
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_score_bias(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
+                TV.width, TV.length, r, bias_dir, s);
             hyp(j).w = hyp_w;
             hyp(j).b = hyp_b;
             hyp(j).pos = hyp_xy;
@@ -162,8 +167,8 @@ for i = 1:T-N
         if ~isempty(hyp(j).w)
             coll_bound_global = R(TV_th(j))*[coll_bound_x; coll_bound_y] + [TV_x(j); TV_y(j)];
             l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
-            if hyp(j).w(2) == 0
-                hyp_x = [hyp(j).b, hyp(j).b];
+            if abs(hyp(j).w(2)) <= 1e-8
+                hyp_x = [hyp(j).b/hyp(j).w(1), hyp(j).b/hyp(j).w(1)];
                 hyp_y = [map_dim(3), map_dim(4)];
             else
                 hyp_x = [map_dim(1), map_dim(2)];
