@@ -10,6 +10,9 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 08/11/2020
+1. Encode the hyperplane constraints into OBCA formulation (`online_MPC/HPPobca_CFTOC.m`). The warm start can be the extended previous iteration. The waypoints to detect collision can also be the previous extend previous z_opt. (`online_MPC/online_HOBCA.m`)
+
 ### 08/10/2020
 1. Generate the score-biased hyperplane (Edward)
 2. Add the option of score biased hyperplane into `online_MPC/online_HOBCA.m` and `online_MPC/online_hppMPC.m`

@@ -7,22 +7,7 @@ function [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 
 	% ======== Warm Start Using Last Iteration
 
-	z_WS = EV.z_opt(:, 2:end);
-	u_WS = EV.u_opt(:, 2:end);
-
-	u_last = u_WS(:, end);
-	z_last = z_WS(:, end);
-
-	z_last(1) = z_last(1) - offset*cos(z_last(3));
-	z_last(2) = z_last(2) - offset*sin(z_last(3));
-
-	z_plus = bikeFE(z_last, u_last, L, dt);
-
-	z_plus(1) = z_plus(1) + offset*cos(z_plus(3));
-	z_plus(2) = z_plus(2) + offset*sin(z_plus(3));
-
-	z_WS = [z_WS, z_plus];
-	u_WS = [u_WS, u_last];
+	[z_WS, u_WS] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
 
 	% =========== Warm Start Using HPP anchor points
 	% % Get z warm start

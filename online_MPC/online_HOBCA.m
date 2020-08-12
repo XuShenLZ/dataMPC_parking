@@ -6,7 +6,7 @@ addpath('../nominal_MPC')
 
 %% Load testing data
 % uiopen('load')
-exp_num = 30;
+exp_num = 12;
 exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -23,6 +23,7 @@ v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
 % r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 r = EV.width/2; % For directly incorporating hpp constraints into HOBCA
+% r = EV.length/2; % For directly incorporating hpp constraints into HOBCA
 
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
@@ -159,6 +160,11 @@ for i = 1:T-N
     % Generate reference trajectory
     EV_x_ref = EV_x + [0:N]*dt*v_ref;
     EV_y_ref = zeros(1, length(EV_x_ref));
+    z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    if ~isfield(EV, 'z_opt')
+        EV.z_opt = z_ref;
+        EV.u_opt = zeros(2, N);
+    end
     
     % Check which points along the reference trajectory would result in
     % collision. Collision is defined as the reference point at step k 
@@ -166,9 +172,12 @@ for i = 1:T-N
     % occupied by the target vehicle at step k along the prediction horizon
     % and B(r) is the 2D ball with radius equal to the collision buffer
     % radius of the ego vehicle
+    [z_WS, ~] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
+    z_detect = z_WS; % Use the extended previous iteration to construct hpp
+    % z_detect = z_ref; % Use the ref to construct hpp
     horizon_collision = [];
     for j = 1:N+1
-        ref = [EV_x_ref(j); EV_y_ref(j)];
+        ref = z_detect(1:2, j); 
         collision = check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
         horizon_collision = [horizon_collision, collision];
         if collision
@@ -202,11 +211,6 @@ for i = 1:T-N
     % ========== Controller
     % Online HOBCA
     z0 = EV.traj(:, end);
-    z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
-    if ~isfield(EV, 'z_opt')
-        EV.z_opt = z_ref;
-        EV.u_opt = zeros(2, N);
-    end
     % [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
     [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
     if ~feas
@@ -270,7 +274,7 @@ for i = 1:T-N
                 hyp_y = (-hyp(j).w(1)*hyp_x+hyp(j).b)/hyp(j).w(2);
             end
             l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
-            l_TV = [l_TV plot([EV_x_ref(j) hyp(j).pos(1)], [EV_y_ref(j) hyp(j).pos(2)], '-o', 'color', cmap(j,:))];
+            l_TV = [l_TV plot([z_detect(1, j) hyp(j).pos(1)], [z_detect(2, j) hyp(j).pos(2)], '-o', 'color', cmap(j,:))];
         end
         l_TV = [l_TV plot(EV_x_ref(j), EV_y_ref(j), 'o', 'color', cmap(j,:))];
         l_TV = [l_TV plot(z_niv(1, j), z_niv(2, j), 'x', 'color', 'm')];
