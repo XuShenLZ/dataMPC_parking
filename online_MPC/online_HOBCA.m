@@ -6,7 +6,7 @@ addpath('../nominal_MPC')
 
 %% Load testing data
 % uiopen('load')
-exp_num = 12;
+exp_num = 30;
 exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -21,8 +21,8 @@ dt = EV.dt; % Time step
 T = length(TV.t); % Length of data
 v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
-% r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
-r = EV.width/2; % For directly incorporating hpp constraints into HOBCA
+r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
+% r = EV.width/2; % For directly incorporating hpp constraints into HOBCA
 % r = EV.length/2; % For directly incorporating hpp constraints into HOBCA
 
 % Make a copy of EV as the optimal EV, and naive EV
@@ -158,13 +158,35 @@ for i = 1:T-N
     addpoints(Y_line, i, score(3));
     
     % Generate reference trajectory
-    EV_x_ref = EV_x + [0:N]*dt*v_ref;
+    % Bias the ref trajectory
+    if max(score) > 0.6 && max_idx < 3
+        % If strategy is not yield and with relatively clear belief
+        EV_x_ref = EV_x + [0:N]*dt*v_ref;
+    elseif max(score) > 0.5 && max_idx < 3
+        % If strategy is not yield and with relatively vague belief
+        EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
+    else
+        % If yield or not clear to left or right
+        a_deacc = 1;
+        N_stop = floor(EV_v / dt / a_deacc);
+        if N_stop >= N
+            v_final = EV_v - N*dt*a_deacc;
+            v_profile = linspace(EV_v, v_final, N+1);
+        else
+            v_profile = linspace(EV_v, 0, N_stop+1);
+            v_profile = [v_profile, zeros(1, N-N_stop)];
+        end
+
+        EV_x_ref = EV_x;
+
+        for j = 1:N
+            EV_x_ref(j+1) = EV_x_ref(j) + v_profile(j)*dt;
+        end
+    end
+    
+    % EV_x_ref = EV_x + [0:N]*dt*v_ref;
     EV_y_ref = zeros(1, length(EV_x_ref));
     z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
-    if ~isfield(EV, 'z_opt')
-        EV.z_opt = z_ref;
-        EV.u_opt = zeros(2, N);
-    end
     
     % Check which points along the reference trajectory would result in
     % collision. Collision is defined as the reference point at step k 
@@ -172,9 +194,17 @@ for i = 1:T-N
     % occupied by the target vehicle at step k along the prediction horizon
     % and B(r) is the 2D ball with radius equal to the collision buffer
     % radius of the ego vehicle
-    [z_WS, ~] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
-    z_detect = z_WS; % Use the extended previous iteration to construct hpp
-    % z_detect = z_ref; % Use the ref to construct hpp
+
+    % ======= Use the extended prev iteration to detect collision
+    % if ~isfield(EV, 'z_opt')
+    %     EV.z_opt = z_ref;
+    %     EV.u_opt = zeros(2, N);
+    % end
+    % [z_WS, ~] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
+    % z_detect = z_WS; % Use the extended previous iteration to construct hpp
+    
+    % ======= Use the ref traj to detect collision
+    z_detect = z_ref; % Use the ref to construct hpp
     horizon_collision = [];
     for j = 1:N+1
         ref = z_detect(1:2, j); 
@@ -208,30 +238,71 @@ for i = 1:T-N
         end
     end
 
-    % ========== Controller
-    % Online HOBCA
-    z0 = EV.traj(:, end);
-    % [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
-    [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
-    if ~feas
-        warning('HOBCA not feasible')
+    % Parallel Online Controller
+    % =======
+    zz0{1} = EV.traj(:, end);
+    zz0{2} = NEV.traj(:, end);
+    zz_ref{1} = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    zz_ref{2} = [NEV.traj(1, end) + [0:N]*dt*v_ref; ...
+                 zeros(2, N+1); 
+                 v_ref*ones(1, N+1)];
+    zz_opt = cell(1,2);
+    uu_opt = cell(1,2);
+    par_feas = zeros(1,2);
+
+    parfor j = 1:2
+        z0 = zz0{j};
+        z_ref = zz_ref{j};
+        if j == 1
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+            % [zz_opt{j}, uu_opt{j}, par_feas(j)] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+            if ~par_feas(j)
+                warning('HOBCA Not Feasible')
+            end
+        else
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = niv_CFTOC(z0, N, TV_pred, r, z_ref, NEV);
+            if ~par_feas(j)
+                warning('Naive Not Feasible')
+            end
+        end
     end
-    EV.z_opt = z_opt;
-    EV.u_opt = u_opt;
+    feas = par_feas(1);
+    z_opt = zz_opt{1};
+    u_opt = uu_opt{1};
     EV.traj = [EV.traj, z_opt(:, 2)];
     EV.inputs = [EV.inputs, u_opt(:, 1)];
 
-    % Naive Online Controller
-    z0_niv = NEV.traj(:, end);
-    z_ref_niv = [z0_niv(1) + [0:N]*dt*v_ref; ...
-                 zeros(2, N+1); 
-                 v_ref*ones(1, N+1)];
-    [z_niv, u_niv, feas_niv] = niv_CFTOC(z0_niv, N, TV_pred, r, z_ref_niv, NEV);
-    if ~feas_niv
-        warning('Naive not feasible')
-    end
+    feas_niv = par_feas(2);
+    z_niv = zz_opt{2};
+    u_niv = uu_opt{2};
     NEV.traj = [NEV.traj, z_niv(:, 2)];
     NEV.inputs = [NEV.inputs, u_niv(:, 1)];
+    % ============
+
+    % ========== Sequencial Online Controller
+    % % Online HOBCA
+    % z0 = EV.traj(:, end);
+    % [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+    % % [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+    % if ~feas
+    %     warning('HOBCA not feasible')
+    % end
+    % EV.z_opt = z_opt;
+    % EV.u_opt = u_opt;
+    % EV.traj = [EV.traj, z_opt(:, 2)];
+    % EV.inputs = [EV.inputs, u_opt(:, 1)];
+
+    % % Naive Online Controller
+    % z0_niv = NEV.traj(:, end);
+    % z_ref_niv = [z0_niv(1) + [0:N]*dt*v_ref; ...
+    %              zeros(2, N+1); 
+    %              v_ref*ones(1, N+1)];
+    % [z_niv, u_niv, feas_niv] = niv_CFTOC(z0_niv, N, TV_pred, r, z_ref_niv, NEV);
+    % if ~feas_niv
+    %     warning('Naive not feasible')
+    % end
+    % NEV.traj = [NEV.traj, z_niv(:, 2)];
+    % NEV.inputs = [NEV.inputs, u_niv(:, 1)];
     % ==============
 
     % Plot

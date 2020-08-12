@@ -44,8 +44,6 @@ function [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 	g = EV.g;
 	dt = EV.dt;
 
-	offset = EV.offset;
-
 	disp('Solving DualMultWS Model...');
 
 	lambda = sdpvar(sum(nHp), N+1);
@@ -59,7 +57,6 @@ function [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 
 	for k = 1:N+1
 
-		% t = [z_WS(1,k) + offset*cos(z_WS(3,k)); z_WS(2,k) + offset*sin(z_WS(3,k))];
 		t = [z_WS(1,k); z_WS(2,k)];
 		R = [cos(z_WS(3,k)), -sin(z_WS(3,k)); sin(z_WS(3,k)), cos(z_WS(3,k))];
 
@@ -114,31 +111,28 @@ function [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 	constr = [constr, mu(:) >= 0];
 
 	% Initial State
-	constr = [constr, z(1, 1) == z0(1) - offset*cos(z0(3))];
-	constr = [constr, z(2, 1) == z0(2) - offset*sin(z0(3))];
-	constr = [constr, z(3:4, 1) == z0(3:4)];
+	constr = [constr, z(:, 1) == z0];
 
 	obj = 0;
 
 	for k = 1:N
 
-		constr = [constr, -0.6 <= u(1, k) <= 0.6];
-		constr = [constr, -0.5 <= u(2, k) <= 0.5];
+		constr = [constr, -0.35 <= u(1, k) <= 0.35];
+		constr = [constr, -1 <= u(2, k) <= 1];
 
 		if k < N
 			constr = [constr, -0.2 <= u(1, k+1) - u(1, k) <= 0.2];
 			constr = [constr, -0.3 <= u(2, k+1) - u(2, k) <= 0.3];
 		end
 
-		constr = [constr, z(:, k+1) == bikeFE(z(:,k), u(:, k), L, dt)];
+		constr = [constr, z(:, k+1) == bikeFE_CoG(z(:,k), u(:, k), L, dt)];
 
 		obj = obj + 0.01*u(1, k)^2 + 0.01*u(2, k)^2;
 	end
 
 	for k = 1:N+1
 
-		t = [z(1,k) + offset*cos(z(3,k)); z(2,k) + offset*sin(z(3,k))];
-		% t = [z_WS(1,k); z_WS(2,k)];
+		t = [z(1,k); z(2,k)];
 		R = [cos(z(3,k)), -sin(z(3,k)); sin(z(3,k)), cos(z(3,k))];
 
 		for j = 1:nOb
@@ -190,14 +184,7 @@ function [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 		feas = 1;
 	end
 
-	zz = value(z);
-
-	for k = 1:N+1
-		z_opt(1, k)   = zz(1, k) + offset*cos(zz(3, k));
-		z_opt(2, k)   = zz(2, k) + offset*sin(zz(3, k));
-		z_opt(3:4, k) = zz(3:4, k);
-	end
-
+	z_opt = value(z);
 	u_opt = value(u);
 	mu_opt = value(mu);
 	lambda_opt = value(lambda);

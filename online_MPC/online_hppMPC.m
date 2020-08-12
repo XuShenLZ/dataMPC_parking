@@ -156,8 +156,35 @@ for i = 1:T-N
     addpoints(Y_line, i, score(3));
     
     % Generate reference trajectory
-    EV_x_ref = EV_x + [0:N]*dt*v_ref;
+    % Bias the ref trajectory
+    if max(score) > 0.6 && max_idx < 3
+        % If strategy is not yield and with relatively clear belief
+        EV_x_ref = EV_x + [0:N]*dt*v_ref;
+    elseif max(score) > 0.5 && max_idx < 3
+        % If strategy is not yield and with relatively vague belief
+        EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
+    else
+        % If yield or not clear to left or right
+        a_deacc = 1;
+        N_stop = floor(EV_v / dt / a_deacc);
+        if N_stop >= N
+            v_final = EV_v - N*dt*a_deacc;
+            v_profile = linspace(EV_v, v_final, N+1);
+        else
+            v_profile = linspace(EV_v, 0, N_stop+1);
+            v_profile = [v_profile, zeros(1, N-N_stop)];
+        end
+
+        EV_x_ref = EV_x;
+
+        for j = 1:N
+            EV_x_ref(j+1) = EV_x_ref(j) + v_profile(j)*dt;
+        end
+    end
+
+    % EV_x_ref = EV_x + [0:N]*dt*v_ref;
     EV_y_ref = zeros(1, length(EV_x_ref));
+    z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
     
     % Check which points along the reference trajectory would result in
     % collision. Collision is defined as the reference point at step k 
@@ -165,9 +192,21 @@ for i = 1:T-N
     % occupied by the target vehicle at step k along the prediction horizon
     % and B(r) is the 2D ball with radius equal to the collision buffer
     % radius of the ego vehicle
+
+    % ======= Use the extended prev iteration to detect collision
+    % if ~isfield(EV, 'z_opt')
+    %     EV.z_opt = z_ref;
+    %     EV.u_opt = zeros(2, N);
+    % end
+    % [z_WS, ~] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
+    % z_detect = z_WS; % Use the extended previous iteration to construct hpp
+
+    % ======= Use the ref traj to detect collision
+    z_detect = z_ref; % Use the ref to construct hpp
+    
     horizon_collision = [];
     for j = 1:N+1
-        ref = [EV_x_ref(j); EV_y_ref(j)];
+        ref = z_detect(1:2, j); 
         collision = check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
         horizon_collision = [horizon_collision, collision];
         if collision
@@ -180,13 +219,13 @@ for i = 1:T-N
                 dir = dir/(norm(dir));
             end
             % ==== Unbiased HPP
-            % [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
             % ==== Biased HPP
-            bias_dir = [-1; 0];
-            % bias_dir = [-cos(EV_th); -sin(EV_th)];
-            s = score(max_idx);
-            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_score_bias(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
-                TV.width, TV.length, r, bias_dir, s);
+            % bias_dir = [-1; 0];
+            % % bias_dir = [-cos(EV_th); -sin(EV_th)];
+            % s = score(max_idx);
+            % [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_score_bias(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
+            %     TV.width, TV.length, r, bias_dir, s);
             % =====
             hyp(j).w = hyp_w;
             hyp(j).b = hyp_b;
@@ -302,7 +341,7 @@ for i = 1:T-N
                 hyp_y = (-hyp(j).w(1)*hyp_x+hyp(j).b)/hyp(j).w(2);
             end
             l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
-            l_TV = [l_TV plot([EV_x_ref(j) hyp(j).pos(1)], [EV_y_ref(j) hyp(j).pos(2)], '-o', 'color', cmap(j,:))];
+            l_TV = [l_TV plot([z_detect(1, j) hyp(j).pos(1)], [z_detect(2, j) hyp(j).pos(2)], '-o', 'color', cmap(j,:))];
         end
         l_TV = [l_TV plot(EV_x_ref(j), EV_y_ref(j), 'o', 'color', cmap(j,:))];
         l_TV = [l_TV plot(z_niv(1, j), z_niv(2, j), 'x', 'color', 'm')];

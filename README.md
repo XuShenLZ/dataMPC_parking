@@ -10,6 +10,11 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 08/12/2020
+1. The biased hyperplane seems to not perform well... Instead, we can bias the reference trajectory based on strategy prediction scores. The current logic is: if `max(score) < 0.5`, it will yield; if [0.5, 0.6] it will uses a discounted `v_ref`; if `max(score) > 0.6`, it will use the full `v_ref`. Still need to be verified across many test exps.
+2. Fixed the annoying problem of dyn model frame. Now everything is in CoG, and the inputs are **[beta, a]**, where `beta = atan(lr/(lf+lr)*tan(delta))`. Since this function is also monotonic for `delta`, the real vehicle experiment can easily transform it back to `delta`.
+3. Changed the input limit. The max acc is now `[-1, 1]` and beta is `[-0.35, 0.35]`.
+
 ### 08/11/2020
 1. Encode the hyperplane constraints into OBCA formulation (`online_MPC/HPPobca_CFTOC.m`). The warm start can be the extended previous iteration. The waypoints to detect collision can also be the previous extend previous z_opt. (`online_MPC/online_HOBCA.m`)
 
