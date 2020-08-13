@@ -1,10 +1,32 @@
-%% hobca_CFTOC: function description
-function [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
+%% HPPobca_CFTOC: function description
+function [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 
-	disp('Online HOBCA');
+	dt = EV.dt;
+	L = EV.L;
 
-	% Naive State Warm Start
-	[z_WS, u_WS, feas] = hpp_CFTOC(z0, N, hyp, z_ref, EV);
+	% ======== Warm Start Using Last Iteration
+
+	[z_WS, u_WS] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
+
+	% =========== Warm Start Using HPP anchor points
+	% % Get z warm start
+	% z_WS = z_ref;
+
+	% for k = 1:N+1
+	% 	if ~isempty(hyp(k).w)
+	% 		z_WS(1:2, k) = hyp(k).pos;
+	% 	end
+	% end
+
+	% % Compute the u warm start
+	% v_WS = z_WS(4, :);
+
+	% delta_WS = atan( diff(z_WS(3,:)) ./ v_WS(1:end-1) * EV.L / dt );
+
+	% a_WS = diff(v_WS) / dt;
+	% u_WS = [delta_WS; a_WS];
+
+	% ===========
 
 	% Construct Polyhedra
 	for t = 1:N+1
@@ -149,6 +171,14 @@ function [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 			constr = [constr, G'*mu_j + R'*A'*lambda_j == zeros(2,1)];
 
 			constr = [constr, lambda_j'*A*A'*lambda_j == 1];
+		end
+
+		% Hyperplane constraints
+		if ~isempty(hyp(k).w)
+			w = hyp(k).w;
+			b = hyp(k).b;
+
+			constr = [constr, w(1)*z(1, k) + w(2)*z(2, k) >= b];
 		end
 
 		obj = obj + 0.5*(z(1, k) - z_ref(1, k))^2 ...
