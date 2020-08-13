@@ -159,10 +159,13 @@ for i = 1:T-N
     
     % Generate reference trajectory
     % Bias the ref trajectory
-    if max(score) > 0.6 && max_idx < 3
+    if all( abs(rel_state(1, :)) > 10 )
+        % If it is still far away
+        EV_x_ref = EV_x + [0:N]*dt*v_ref;
+    elseif max(score) > 0.6 && max_idx < 3
         % If strategy is not yield and with relatively clear belief
         EV_x_ref = EV_x + [0:N]*dt*v_ref;
-    elseif max(score) > 0.5 && max_idx < 3
+    elseif max(score) > 0.4 && max_idx < 3
         % If strategy is not yield and with relatively vague belief
         EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
     else
@@ -272,12 +275,16 @@ for i = 1:T-N
     feas = par_feas(1);
     z_opt = zz_opt{1};
     u_opt = uu_opt{1};
+    EV.z_opt = z_opt;
+    EV.u_opt = u_opt;
     EV.traj = [EV.traj, z_opt(:, 2)];
     EV.inputs = [EV.inputs, u_opt(:, 1)];
 
     feas_niv = par_feas(2);
     z_niv = zz_opt{2};
     u_niv = uu_opt{2};
+    NEV.z_opt = z_niv;
+    NEV.u_opt = u_niv;
     NEV.traj = [NEV.traj, z_niv(:, 2)];
     NEV.inputs = [NEV.inputs, u_niv(:, 1)];
     % ============

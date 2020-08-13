@@ -112,11 +112,7 @@ function [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 
 	diagnostics = optimize(constr, obj, ops);
 
-	if diagnostics.problem == 0
-		disp('Solved');
-	else
-		yalmiperror(diagnostics.problem)
-	end
+	disp(yalmiperror(diagnostics.problem));
 	
 	mu_WS = value(mu);
 	lambda_WS = value(lambda);
@@ -208,12 +204,14 @@ function [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 	% ops.ipopt.min_hessian_perturbation = 1e-12;
 
 	%% Solve
-	feas = 0;
 	diagnostics = optimize(constr, obj, ops);
 
+	disp(yalmiperror(diagnostics.problem));
+
 	if diagnostics.problem == 0
-		disp('Solved');
 		feas = 1;
+	else
+		feas = 0;
 	end
 
 	z_opt = value(z);
