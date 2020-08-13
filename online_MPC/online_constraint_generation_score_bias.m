@@ -5,7 +5,7 @@ addpath('../nominal_MPC')
 
 %% Load testing data
 % uiopen('load')
-exp_num = 2;
+exp_num = 100;
 exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -62,7 +62,8 @@ legend('Left', 'Right', 'Yield')
 prob_dim = [1 T-N -0.2 1.2];
 axis(prob_dim)
 
-for i = 100:T-N
+start_k = 60;
+for i = start_k:T-N
     delete(p_EV)
     delete(l_EV)
     delete(p_TV)

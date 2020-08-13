@@ -1,4 +1,4 @@
-function [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_score_bias(p, dir, x, y, theta, w, l, r, bias_dir, score)  
+function [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_tight(p, dir, x, y, theta, w, l, r)  
     R = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
     
     % Transform point in global frame to local body fixed frame
@@ -6,15 +6,8 @@ function [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_score_bias(p, dir, x, y, th
     dir_loc = R(theta)\(dir);
     phi_loc = atan2(dir_loc(2), dir_loc(1));
     
-    bias_dir_loc = R(theta)\bias_dir;
-    bias_phi_loc = atan2(bias_dir_loc(2), bias_dir_loc(1));
-    
-    up_thresh = 0.85;
-    low_thresh = 0.5;
-    bias_mult = 1-max(min((score-low_thresh)/(up_thresh-low_thresh),1),0);
-    
-    [x_local, y_local, hyp_w_local, hyp_b_local] = get_collision_boundary_point_score_bias(p_loc(1), p_loc(2), phi_loc, ...
-        w, l, r, bias_phi_loc, bias_mult);
+    [x_local, y_local, hyp_w_local, hyp_b_local] = get_collision_boundary_point_tight(p_loc(1), p_loc(2), phi_loc, ...
+        w, l, r);
     
     % Point where hyperplane is tangent to collision boundary
     hyp_xy = R(theta)*[x_local; y_local] + [x; y];
