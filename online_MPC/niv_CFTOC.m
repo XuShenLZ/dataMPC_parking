@@ -2,6 +2,9 @@
 function [z_opt, u_opt, feas] = niv_CFTOC(z0, N, TV_pred, R, z_ref, EV)
 	% disp('Solving the online controller')
 
+	disp('Online Naive Controller');
+	tic
+
 	dt = EV.dt;
 
 	L = EV.L;
@@ -68,3 +71,4 @@ function [z_opt, u_opt, feas] = niv_CFTOC(z0, N, TV_pred, R, z_ref, EV)
 
 	z_opt = value(z);
 	u_opt = value(u);
+	toc

@@ -188,6 +188,10 @@ for i = 1:T-N
     % EV_x_ref = EV_x + [0:N]*dt*v_ref;
     EV_y_ref = zeros(1, length(EV_x_ref));
     z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    if ~isfield(EV, 'z_opt')
+        EV.z_opt = z_ref;
+        EV.u_opt = zeros(2, N);
+    end
     
     % Check which points along the reference trajectory would result in
     % collision. Collision is defined as the reference point at step k 
@@ -197,11 +201,7 @@ for i = 1:T-N
     % radius of the ego vehicle
 
     % ======= Use the extended prev iteration to detect collision
-    % if ~isfield(EV, 'z_opt')
-    %     EV.z_opt = z_ref;
-    %     EV.u_opt = zeros(2, N);
-    % end
-    % [z_WS, ~] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
+    % [z_WS, ~] = extend_prevItr(EV.z_opt, EV.u_opt, EV);
     % z_detect = z_WS; % Use the extended previous iteration to construct hpp
 
     % ======= Use the ref traj to detect collision

@@ -2,6 +2,7 @@
 function [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 
 	disp('Online HOBCA');
+	tic;
 
 	% Naive State Warm Start
 	[z_WS, u_WS, feas] = hpp_CFTOC(z0, N, hyp, z_ref, EV);
@@ -188,3 +189,4 @@ function [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 	u_opt = value(u);
 	mu_opt = value(mu);
 	lambda_opt = value(lambda);
+	toc

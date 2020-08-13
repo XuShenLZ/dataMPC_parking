@@ -187,6 +187,10 @@ for i = 1:T-N
     % EV_x_ref = EV_x + [0:N]*dt*v_ref;
     EV_y_ref = zeros(1, length(EV_x_ref));
     z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    if ~isfield(EV, 'z_opt')
+        EV.z_opt = z_ref;
+        EV.u_opt = zeros(2, N);
+    end
     
     % Check which points along the reference trajectory would result in
     % collision. Collision is defined as the reference point at step k 
@@ -196,11 +200,7 @@ for i = 1:T-N
     % radius of the ego vehicle
 
     % ======= Use the extended prev iteration to detect collision
-    % if ~isfield(EV, 'z_opt')
-    %     EV.z_opt = z_ref;
-    %     EV.u_opt = zeros(2, N);
-    % end
-    % [z_WS, ~] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
+    % [z_WS, ~] = extend_prevItr(EV.z_opt, EV.u_opt, EV);
     % z_detect = z_WS; % Use the extended previous iteration to construct hpp
     
     % ======= Use the ref traj to detect collision
@@ -219,8 +219,11 @@ for i = 1:T-N
                 dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
                 dir = dir/(norm(dir));
             end
-            % ==== Unbiased HPP
-            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+            % ==== Unbiased Normal HPP
+            % [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+            % ==== Unbiased Tight HPP
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_tight(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
+                TV.width, TV.length, r);
             % ==== Biased HPP
             % bias_dir = [-1; 0];
             % % bias_dir = [-cos(EV_th); -sin(EV_th)];
@@ -254,8 +257,8 @@ for i = 1:T-N
         z0 = zz0{j};
         z_ref = zz_ref{j};
         if j == 1
-            [zz_opt{j}, uu_opt{j}, par_feas(j)] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
-            % [zz_opt{j}, uu_opt{j}, par_feas(j)] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+            % [zz_opt{j}, uu_opt{j}, par_feas(j)] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
             if ~par_feas(j)
                 warning('HOBCA Not Feasible')
             end

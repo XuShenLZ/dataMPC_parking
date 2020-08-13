@@ -1,7 +1,7 @@
-%% entend_prevItr: uses the previous z_opt and extend one time step
+%% extend_prevItr: uses the previous z_opt and extend one time step
 % for the ref/warm start at the next time step.
 % Extend under the constant input assumption
-function [z_WS, u_WS] = entend_prevItr(z_opt, u_opt, EV)
+function [z_WS, u_WS] = extend_prevItr(z_opt, u_opt, EV)
 	dt = EV.dt;
 	L = EV.L;
 

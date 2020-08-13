@@ -1,14 +1,16 @@
 %% HPPobca_CFTOC: function description
 function [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 
-	dt = EV.dt;
-	L = EV.L;
+	disp('Online HPP OBCA');
+	tic;
 
 	% ======== Warm Start Using Last Iteration
 
-	[z_WS, u_WS] = entend_prevItr(EV.z_opt, EV.u_opt, EV);
+	[z_WS, u_WS] = extend_prevItr(EV.z_opt, EV.u_opt, EV);
 
 	% =========== Warm Start Using HPP anchor points
+	% dt = EV.dt;
+	% L = EV.L;
 	% % Get z warm start
 	% z_WS = z_ref;
 
@@ -218,3 +220,4 @@ function [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 	u_opt = value(u);
 	mu_opt = value(mu);
 	lambda_opt = value(lambda);
+	toc

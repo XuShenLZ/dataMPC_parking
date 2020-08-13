@@ -2,6 +2,9 @@
 function [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, z_ref, EV)
 	% disp('Solving the online controller')
 
+	disp('Online HPP CFTOC');
+	tic;
+
 	dt = EV.dt;
 
 	L = EV.L;
@@ -83,3 +86,5 @@ function [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, z_ref, EV)
 
 	z_opt = value(z);
 	u_opt = value(u);
+
+	toc
