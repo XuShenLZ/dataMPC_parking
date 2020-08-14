@@ -10,6 +10,9 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 08/13/2020
+1. Added `online_MPC/score_KF.m` for filtering strategy prediction, which helps to overcome sudden jump.
+
 ### 08/12/2020
 1. The biased hyperplane seems to not perform well... Instead, we can bias the reference trajectory based on strategy prediction scores. The current logic is: if `max(score) < 0.5`, it will yield; if [0.5, 0.6] it will uses a discounted `v_ref`; if `max(score) > 0.6`, it will use the full `v_ref`. Still need to be verified across many test exps.
 2. Fixed the annoying problem of dyn model frame. Now everything is in CoG, and the inputs are **[beta, a]**, where `beta = atan(lr/(lf+lr)*tan(delta))`. Since this function is also monotonic for `delta`, the real vehicle experiment can easily transform it back to `delta`.

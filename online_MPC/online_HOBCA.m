@@ -9,7 +9,6 @@ addpath('../nominal_MPC')
 exp_num = 30;
 exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
-
 %% Load strategy prediction model
 model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
 model_file = strcat('../models/', model_name, '.mat');
@@ -24,6 +23,12 @@ y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 % r = EV.width/2; % For directly incorporating hpp constraints into HOBCA
 % r = EV.length/2; % For directly incorporating hpp constraints into HOBCA
+
+% ==== Filter Setup
+V = 0.01 * eye(3);
+W = 0.5 * eye(3);
+Pm = 0.2 * eye(3);
+score = ones(3, 1) / 3;
 
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
@@ -143,7 +148,11 @@ for i = 1:T-N
     % Predict strategy to use based on relative prediction of target
     % vehicle
     X = reshape(rel_state, [], 1);
-    score = net(X);
+    score_z = net(X);
+
+    % Filter
+    [score, Pm] = score_KF(score, score_z, V, W, Pm);
+
     [~, max_idx] = max(score);
     if max_idx == 1
         Y = "Left";
