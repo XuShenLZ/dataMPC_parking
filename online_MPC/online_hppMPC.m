@@ -23,6 +23,12 @@ v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 
+% ==== Filter Setup
+V = 0.01 * eye(3);
+W = 0.5 * eye(3);
+Pm = 0.2 * eye(3);
+score = ones(3, 1) / 3;
+
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
 NEV = EV;
@@ -141,7 +147,11 @@ for i = 1:T-N
     % Predict strategy to use based on relative prediction of target
     % vehicle
     X = reshape(rel_state, [], 1);
-    score = net(X);
+    score_z = net(X);
+
+    % Filter
+    [score, Pm] = score_KF(score, score_z, V, W, Pm);
+
     [~, max_idx] = max(score);
     if max_idx == 1
         Y = "Left";
