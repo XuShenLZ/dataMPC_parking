@@ -171,12 +171,12 @@ for i = 1:T-N
     if all( abs(rel_state(1, :)) > 10 )
         % If it is still far away
         EV_x_ref = EV_x + [0:N]*dt*v_ref;
-    elseif max(score) > 0.6 && max_idx < 3
-        % If strategy is not yield and with relatively clear belief
-        EV_x_ref = EV_x + [0:N]*dt*v_ref;
+        EV_v_ref = v_ref*ones(1, N+1);
     elseif max(score) > 0.4 && max_idx < 3
-        % If strategy is not yield and with relatively vague belief
-        EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
+        % If strategy is not yield
+        % EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
+        EV_x_ref = EV_x + [0:N]*dt*v_ref;
+        EV_v_ref = max(score)*v_ref*ones(1, N+1);
     else
         % If yield or not clear to left or right
         a_deacc = 1;
@@ -190,6 +190,7 @@ for i = 1:T-N
         end
 
         EV_x_ref = EV_x;
+        EV_v_ref = v_profile;
 
         for j = 1:N
             EV_x_ref(j+1) = EV_x_ref(j) + v_profile(j)*dt;
@@ -198,7 +199,8 @@ for i = 1:T-N
     
     % EV_x_ref = EV_x + [0:N]*dt*v_ref;
     EV_y_ref = zeros(1, length(EV_x_ref));
-    z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    EV_h_ref = zeros(1, length(EV_x_ref));
+    z_ref = [EV_x_ref; EV_y_ref; EV_h_ref; EV_v_ref];
     if ~isfield(EV, 'z_opt')
         EV.z_opt = z_ref;
         EV.u_opt = zeros(2, N);
@@ -257,7 +259,7 @@ for i = 1:T-N
     % =======
     zz0{1} = EV.traj(:, end);
     zz0{2} = NEV.traj(:, end);
-    zz_ref{1} = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    zz_ref{1} = z_ref;
     zz_ref{2} = [NEV.traj(1, end) + [0:N]*dt*v_ref; ...
                  zeros(2, N+1); 
                  v_ref*ones(1, N+1)];
