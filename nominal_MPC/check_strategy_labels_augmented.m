@@ -55,20 +55,20 @@ for j = start:size(solution_status,1)
     for i = 1:T-N
         % Get x, y, heading, and velocity from ego vehicle at current timestep
         EV_x = EV.traj(1,i);
-        EV_y = EV.traj(2,i);
-        EV_th = EV.traj(3,i);
+        EV_y = -EV.traj(2,i);
+        EV_th = -EV.traj(3,i);
         EV_v = EV.traj(4,i);
 
-        EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
+        EV_curr = [EV_x; -EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
 
         % Get x, y, heading, and velocity from target vehicle over prediction
         % horizon
         TV_x = TV.x(i:i+N);
-        TV_y = TV.y(i:i+N);
-        TV_th = TV.heading(i:i+N);
+        TV_y = -TV.y(i:i+N);
+        TV_th = -TV.heading(i:i+N);
         TV_v = TV.v(i:i+N);
 
-        TV_pred = [TV_x, TV_y, TV_th, TV_v.*cos(TV_th), TV_v.*sin(TV_th)]';
+        TV_pred = [TV_x, -TV_y, TV_th, TV_v.*cos(TV_th), TV_v.*sin(TV_th)]';
 
         % Get target vehicle trajectory relative to ego vehicle state
         rel_state = TV_pred - EV_curr;
@@ -91,8 +91,8 @@ for j = start:size(solution_status,1)
     end
     
     EV_x = EV.traj(1,:);
-    EV_y = EV.traj(2,:);
-    EV_th = EV.traj(3,:);
+    EV_y = -EV.traj(2,:);
+    EV_th = -EV.traj(3,:);
     EV_v = EV.traj(4,:);
     % Get ego vehicle vertices at current time step
     EV_Vx_curr = [EV_x(min_x_idx) + EV.length/2*cos(EV_th(min_x_idx)) - EV.width/2*sin(EV_th(min_x_idx));
@@ -105,8 +105,8 @@ for j = start:size(solution_status,1)
 		  EV_y(min_x_idx) - EV.length/2*sin(EV_th(min_x_idx)) + EV.width/2*cos(EV_th(min_x_idx))];
     
     TV_x = TV.x;
-    TV_y = TV.y;
-    TV_th = TV.heading;
+    TV_y = -TV.y;
+    TV_th = -TV.heading;
     TV_v = TV.v;
     % Get target vehicle vertices at current time step
     TV_Vx_curr = [TV_x(min_x_idx) + TV.length/2*cos(TV_th(min_x_idx)) - TV.width/2*sin(TV_th(min_x_idx));
@@ -119,9 +119,9 @@ for j = start:size(solution_status,1)
 		  TV_y(min_x_idx) - TV.length/2*sin(TV_th(min_x_idx)) - TV.width/2*cos(TV_th(min_x_idx));
 		  TV_y(min_x_idx) - TV.length/2*sin(TV_th(min_x_idx)) + TV.width/2*cos(TV_th(min_x_idx))];
 
-    plt_EV_opt = plot(EV.traj(1, :), EV.traj(2, :), 'b');
+    plt_EV_opt = plot(EV.traj(1, :), -EV.traj(2, :), 'b');
     hold on
-    plt_TV = plot(TV.x, TV.y, 'r');
+    plt_TV = plot(TV.x, -TV.y, 'r');
     plt_EV_V = plot(EV_Vx_curr, EV_Vy_curr, 'bo');
     plt_TV_V = plot(TV_Vx_curr, TV_Vy_curr, 'ro');
     title(sprintf('exp: %i, label: %s', j, label))
