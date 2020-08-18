@@ -69,6 +69,7 @@ map_size = [map_dim(4)-map_dim(3), map_dim(2)-map_dim(1)];
 plt_ops.color = 'blue';
 plt_ops.alpha = 0.5;
 plt_ops.circle = false;
+plt_ops.frame = false;
 
 plt_TV = plot(TV.x, TV.y, 'k--');
 plt_EV_ref = plot(EV.ref_z(1, :), EV.ref_z(2, :), 'g.');
