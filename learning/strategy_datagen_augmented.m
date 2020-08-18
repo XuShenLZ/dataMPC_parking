@@ -41,20 +41,20 @@ function [training_data] = par_strategy_gen(exp_num, N)
 	for i = 1:T-N
 	    % Get x, y, heading, and velocity from ego vehicle at current timestep
 	    EV_x = EV.traj(1,i);
-	    EV_y = EV.traj(2,i);
-	    EV_th = EV.traj(3,i);
+	    EV_y = -EV.traj(2,i);
+	    EV_th = -EV.traj(3,i);
 	    EV_v = EV.traj(4,i);
 	    
-	    EV_curr = [EV_x; -EV_y; -EV_th; EV_v*cos(-EV_th); EV_v*sin(-EV_th)];
+	    EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
 	    
 	    % Get x, y, heading, and velocity from target vehicle over prediction
 	    % horizon
 	    TV_x = TV.x(i:i+N);
-	    TV_y = TV.y(i:i+N);
-	    TV_th = TV.heading(i:i+N);
+	    TV_y = -TV.y(i:i+N);
+	    TV_th = -TV.heading(i:i+N);
 	    TV_v = TV.v(i:i+N);
 	    
-	    TV_pred = [TV_x, -TV_y, -TV_th, TV_v.*cos(-TV_th), TV_v.*sin(-TV_th)]';
+	    TV_pred = [TV_x, TV_y, TV_th, TV_v.*cos(TV_th), TV_v.*sin(TV_th)]';
 	    
 	    % Get target vehicle trajectory relative to ego vehicle state
 	    rel_state = TV_pred - EV_curr;
