@@ -10,6 +10,10 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 08/18/2020
+1. Added `ref_v` for tracking. The score will only discount the `ref_v`, instead of `ref_x`.
+2. Lock the strategy if there are already a certain steps colliding.
+
 ### 08/13/2020
 1. Added `online_MPC/score_KF.m` for filtering strategy prediction, which helps to overcome sudden jump.
 

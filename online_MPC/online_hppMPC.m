@@ -29,6 +29,8 @@ W = 0.5 * eye(3);
 Pm = 0.2 * eye(3);
 score = ones(3, 1) / 3;
 
+strategies = ["Left", "Right", "Yield"];
+
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
 NEV = EV;
@@ -153,13 +155,6 @@ for i = 1:T-N
     [score, Pm] = score_KF(score, score_z, V, W, Pm);
 
     [~, max_idx] = max(score);
-    if max_idx == 1
-        Y = "Left";
-    elseif max_idx == 2
-        Y = "Right";
-    else
-        Y = "Yield";
-    end
 
     addpoints(L_line, i, score(1));
     addpoints(R_line, i, score(2));
@@ -224,10 +219,24 @@ for i = 1:T-N
         ref = z_detect(1:2, j); 
         collision = check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
         horizon_collision = [horizon_collision, collision];
+    end
+
+    % Lock the strategy if more than 3 steps are colliding
+    if sum(horizon_collision) >= 3
+        strategy_idx = last_idx;
+        strategy_lock = true;
+    else
+        strategy_idx = max_idx;
+        last_idx = max_idx;
+        strategy_lock = false;
+    end
+
+    for j = 1:N+1
+        collision = horizon_collision(j);
         if collision
-            if max_idx == 1
+            if strategy_idx == 1
                 dir = [0; 1];
-            elseif max_idx == 2
+            elseif strategy_idx == 2
                 dir = [0; -1];
             else
                 dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
@@ -318,7 +327,7 @@ for i = 1:T-N
 
     % Plot
     axes(ax1);
-    t_Y = text(-25, 8, sprintf('Strategy: %s', Y), 'color', 'k');
+    t_Y = text(-25, 8, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idx), strategy_lock), 'color', 'k');
     hold on
     t_hyp_feas = text(-25, 6, sprintf('HPP Online MPC feas: %d', feas), 'color', 'b');
     hold on
