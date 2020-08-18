@@ -232,6 +232,7 @@ for i = 1:T-N
     end
 
     for j = 1:N+1
+        ref = z_detect(1:2, j);
         collision = horizon_collision(j);
         if collision
             if strategy_idx == 1

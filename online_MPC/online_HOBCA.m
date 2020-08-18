@@ -220,7 +220,7 @@ for i = 1:T-N
         collision = check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
         horizon_collision = [horizon_collision, collision];
     end
-    
+
     % Lock the strategy if more than 3 steps are colliding
     if sum(horizon_collision) >= 3
         strategy_idx = last_idx;
@@ -232,6 +232,8 @@ for i = 1:T-N
     end
 
     for j = 1:N+1
+        ref = z_detect(1:2, j);
+        collision = horizon_collision(j);
         if collision
             if strategy_idx == 1
                 dir = [0; 1];
