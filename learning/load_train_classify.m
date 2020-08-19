@@ -3,6 +3,8 @@ clear('all');
 close('all');
 clc
 
+rng(0);
+
 %% Load dataset file
 % If reconstructing the features and labels is
 % necessary, load the file named 'hpp_data_*.mat'
