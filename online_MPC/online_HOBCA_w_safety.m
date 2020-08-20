@@ -28,6 +28,7 @@ r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 d_lim = [-0.35, 0.35];
 a_lim = [-1, 1];
 obca_safety_control = safety_controller(dt, d_lim, a_lim);
+obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 niv_safety_control = safety_controller(dt, d_lim, a_lim);
 
 % ==== Filter Setup
@@ -59,7 +60,7 @@ NEV_plt_opts.frame = false;
 NEV_plt_opts.color = 'm';
 NEV_plt_opts.alpha = 0.5;
 
-EV_plt_opts.circle = true;
+EV_plt_opts.circle = false;
 EV_plt_opts.frame = true;
 EV_plt_opts.color = 'b';
 EV_plt_opts.alpha = 0.5;
@@ -97,39 +98,40 @@ R = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 F(T-N) = struct('cdata',[],'colormap',[]);
 
 % fig = figure('units','normalized','outerposition',[0 0 1 1]);
-fig = figure('Position', [50 50 600 600]);
+fig = figure('Position', [50 50 1200 600]);
 
-ax1 = subplot(2,1,1);
+ax1 = axes('Position',[0.05 0.55 0.4 0.4]);
 
-ax2 = subplot(2,1,2);
+ax2 = axes('Position',[0.05 0.05 0.4 0.4]);
 L_line = animatedline(ax2, 'color', '#0072BD', 'linewidth', 2);
 R_line = animatedline(ax2, 'color', '#D95319', 'linewidth', 2);
 Y_line = animatedline(ax2, 'color', '#77AC30', 'linewidth', 2);
 legend('Left', 'Right', 'Yield')
-prob_dim = [1 T-N -0.2 1.2];
+prob_dim = [1 T-N 0 1];
+ylabel('Score')
 axis(prob_dim)
 grid on
 
 % Plot inputs
-fig_2 = figure('Position', [700 50 600 600]);
-ax_h_v = subplot(4,1,1);
+ax_h_v = axes('Position',[0.5 0.75 0.45 0.2]);
 h_v_l = animatedline(ax_h_v, 'color', '#0072BD', 'linewidth', 2);
 ylabel('v')
 axis([1 T-N -3 3])
-title('OBCA MPC')
 
-ax_h_d = subplot(4,1,2);
+ax_h_d = axes('Position',[0.5 0.52 0.45 0.2]);
 h_d_l = animatedline(ax_h_d, 'color', '#0072BD', 'linewidth', 2);
 ylabel('delta')
 axis([1 T-N d_lim(1) d_lim(2)])
 
-ax_h_a = subplot(4,1,3);
+ax_h_a = axes('Position',[0.5 0.28 0.45 0.2]);
 h_a_l = animatedline(ax_h_a, 'color', '#0072BD', 'linewidth', 2);
 ylabel('a')
 axis([1 T-N a_lim(1) a_lim(2)])
 
-ax_h_s = subplot(4,1,4);
+ax_h_s = axes('Position',[0.5 0.05 0.45 0.2]);
 h_s_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2);
+h_e_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2, 'linestyle', '--');
+legend('Safety', 'E-Brake')
 ylabel('safety')
 axis([1 T-N 0 1])
 
@@ -154,7 +156,8 @@ obca_mpc_safety = false;
 niv_mpc_safety = false;
 
 for i = 1:T-N
-    fprintf('Iter: %i\n', i)
+    fprintf('=====================================\n')
+    fprintf('Iteration: %i\n', i)
     
     % Get x, y, heading, and velocity from ego vehicle at current timestep
     EV_x  = EV.traj(1, end);
@@ -204,13 +207,19 @@ for i = 1:T-N
     % Bias the ref trajectory
     yield = false;
 %     if all( abs(rel_state(1, :)) > 10 )
-    if all( abs(rel_state(1, :)) > 20 )
+    if all( abs(rel_state(1, :)) > 20 ) || rel_state(1,1) < -r
         % If it is still far away
         EV_x_ref = EV_x + [0:N]*dt*v_ref;
         EV_v_ref = v_ref*ones(1, N+1);
         obca_mpc_safety = false;
         niv_mpc_safety = false;
-    elseif max(score) > 0.6 && max_idx < 3
+        if all( abs(rel_state(1, :)) > 20 )
+            fprintf('Cars are far away, tracking nominal reference velocity\n')
+        end
+        if rel_state(1,1) < -r
+            fprintf('EV has passed TV, tracking nominal reference velocity\n')
+        end
+    elseif max(score) > 0.55 && max_idx < 3
         % If strategy is not yield discount reference velocity based on max
         % likelihood
         % EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
@@ -219,12 +228,13 @@ for i = 1:T-N
 %         EV_v_ref = v_ref*ones(1, N+1);
         obca_mpc_safety = false;
         niv_mpc_safety = false;
-
+        fprintf('Confidence: %g, threshold met, tracking score discounted reference velocity\n', max(score))
     else
         % If yield or not clear to left or right
         yield = true;
         EV_x_ref = EV_x + [0:N]*dt*v_ref;
         EV_v_ref = v_ref*ones(1, N+1);
+        fprintf('Confidence: %g, threshold not met, setting yield to true\n', max(score))
     end
     
     % EV_x_ref = EV_x + [0:N]*dt*v_ref;
@@ -314,7 +324,6 @@ for i = 1:T-N
     uu_opt = cell(1,2);
     par_feas = zeros(1,2);
     
-    
     if ~obca_mpc_safety && yield
         % Compute the distance threshold for applying braking assuming max
         % decceleration is applied
@@ -328,17 +337,18 @@ for i = 1:T-N
             % If distance between cars is within the braking threshold,
             % activate safety controller
             obca_mpc_safety = true;
+            fprintf('EV is within braking distance threshold, activating safety controller\n')
         end
     end
 
     % HPP OBCA MPC
-    
+    obca_mpc_ebrake = false;
     if ~obca_mpc_safety
         [zz_opt{1}, uu_opt{1}, par_feas(1)] = HPPobca_CFTOC(zz0{1}, N, hyp, TV_pred, zz_ref{1}, EV);
         if ~par_feas(1)
-            % If OBCA MPC is infeasible, activate safety controller
-            obca_mpc_safety = true;
-            warning('HOBCA Not Feasible')
+            % If OBCA MPC is infeasible, activate ebrake controller
+            obca_mpc_ebrake = true;
+            fprintf('HOBCA not feasible, activating emergency brake\n')
         else
             EV.z_opt = zz_opt{1};
             EV.u_opt = uu_opt{1};
@@ -348,15 +358,40 @@ for i = 1:T-N
     if obca_mpc_safety
         obca_safety_control = obca_safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
         [u_safe, obca_safety_control] = obca_safety_control.solve(zz0{1}, TV_pred, EV.inputs(:,end));
+        % Assume safety control is applied for one time step then no
+        % control action is applied for rest of horizon
         u_sol = [u_safe zeros(2,N-1)];
         z_sol = [zz0{1} zeros(4,N)];
+        % Simulate this policy
         for j = 1:N
             z_sol(:,j+1) = bikeFE_CoG(z_sol(:,j), u_sol(:,j), EV.L, dt);
         end
+        % Update variables used for OBCA warmstart (this is important
+        % because if we don't update this, when the safety controller is
+        % deactivated, OBCA will likely have a bad warmstart)
         zz_opt{1} = z_sol;
         uu_opt{1} = u_sol;
         EV.z_opt = zz_opt{1};
         EV.u_opt = uu_opt{1};
+        fprintf('Applying safety control\n')
+    elseif obca_mpc_ebrake
+        [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(zz0{1}, TV_pred, EV.inputs(:,end));
+        % Assume ebrake control is applied for one time step then no
+        % control action is applied for rest of horizon
+        u_sol = [u_safe zeros(2,N-1)];
+        z_sol = [zz0{1} zeros(4,N)];
+        % Simulate this policy
+        for j = 1:N
+            z_sol(:,j+1) = bikeFE_CoG(z_sol(:,j), u_sol(:,j), EV.L, dt);
+        end
+        % Update variables used for OBCA warmstart (this is important
+        % because if we don't update this, when the safety controller is
+        % deactivated, OBCA will likely have a bad warmstart)
+        zz_opt{1} = z_sol;
+        uu_opt{1} = u_sol;
+        EV.z_opt = zz_opt{1};
+        EV.u_opt = uu_opt{1};
+        fprintf('Applying ebrake control\n')
     end
     
     % Naive MPC
@@ -417,6 +452,7 @@ for i = 1:T-N
     addpoints(h_d_l, i, u_opt(1,1));
     addpoints(h_a_l, i, u_opt(2,1));
     addpoints(h_s_l, i, double(obca_mpc_safety));
+    addpoints(h_e_l, i, double(obca_mpc_ebrake));
     
 %     addpoints(n_d_l, i, u_niv(1,1));
 %     addpoints(n_a_l, i, u_niv(2,1));
@@ -429,14 +465,19 @@ for i = 1:T-N
     
     % Plot
     axes(ax1);
-    t_Y = text(-30, 8, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idx), strategy_lock), 'color', 'k');
+    t_Y = text(-29, 9, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idx), strategy_lock), 'color', 'k');
     hold on
     if obca_mpc_safety
         s_h = 'ON';
     else
         s_h = 'OFF';
     end
-    t_h_feas = text(-30, 6, sprintf('HOBCA Online MPC feas: %d, Safety: %s', feas, s_h), 'color', 'b');
+    if obca_mpc_ebrake
+        e_h = 'ON';
+    else
+        e_h = 'OFF';
+    end
+    t_h_feas = text(-29, 7, sprintf('HOBCA Online MPC feas: %d, Safety: %s, E-Brake: %s', feas, s_h, e_h), 'color', 'b');
     hold on
 %     if niv_mpc_safety
 %         s_n = 'ON';
