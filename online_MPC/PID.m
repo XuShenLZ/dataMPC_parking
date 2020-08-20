@@ -50,7 +50,7 @@ classdef PID
             obj.x = x;
             
             % Compute errors
-            e_k = obj.x_ref - x;
+            e_k = x - obj.x_ref;
             de_k = (e_k - obj.e)/obj.dt;
             ei_k = obj.ei + e_k*obj.dt;
             
@@ -67,7 +67,7 @@ classdef PID
             I_val = obj.I*ei_k;
             D_val = obj.D*de_k;
             
-            u = (P_val + I_val + D_val) + obj.u_ref;
+            u = -(P_val + I_val + D_val) + obj.u_ref;
             
             % Saturate input
             u = min(u, obj.u_max);

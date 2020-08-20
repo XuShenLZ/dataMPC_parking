@@ -112,58 +112,49 @@ grid on
 
 % Plot inputs
 fig_2 = figure('Position', [700 50 600 600]);
-ax_h_d = subplot(3,1,1);
+ax_h_v = subplot(4,1,1);
+h_v_l = animatedline(ax_h_v, 'color', '#0072BD', 'linewidth', 2);
+ylabel('v')
+axis([1 T-N -3 3])
+title('OBCA MPC')
+
+ax_h_d = subplot(4,1,2);
 h_d_l = animatedline(ax_h_d, 'color', '#0072BD', 'linewidth', 2);
 ylabel('delta')
 axis([1 T-N d_lim(1) d_lim(2)])
-title('OBCA MPC')
 
-ax_h_a = subplot(3,1,2);
+ax_h_a = subplot(4,1,3);
 h_a_l = animatedline(ax_h_a, 'color', '#0072BD', 'linewidth', 2);
 ylabel('a')
 axis([1 T-N a_lim(1) a_lim(2)])
 
-ax_h_s = subplot(3,1,3);
+ax_h_s = subplot(4,1,4);
 h_s_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2);
 ylabel('safety')
 axis([1 T-N 0 1])
 
-fig_3 = figure('Position', [1350 50 600 600]);
-ax_n_d = subplot(3,1,1);
-n_d_l = animatedline(ax_n_d, 'color', '#0072BD', 'linewidth', 2);
-ylabel('delta')
-axis([1 T-N d_lim(1) d_lim(2)])
-title('Naive MPC')
+% fig_3 = figure('Position', [1350 50 600 600]);
+% ax_n_d = subplot(3,1,1);
+% n_d_l = animatedline(ax_n_d, 'color', '#0072BD', 'linewidth', 2);
+% ylabel('delta')
+% axis([1 T-N d_lim(1) d_lim(2)])
+% title('Naive MPC')
+% 
+% ax_n_a = subplot(3,1,2);
+% n_a_l = animatedline(ax_n_a, 'color', '#0072BD', 'linewidth', 2);
+% ylabel('a')
+% axis([1 T-N a_lim(1) a_lim(2)])
+% 
+% ax_n_s = subplot(3,1,3);
+% n_s_l = animatedline(ax_n_s, 'color', '#0072BD', 'linewidth', 2);
+% ylabel('safety')
+% axis([1 T-N 0 1])
 
-ax_n_a = subplot(3,1,2);
-n_a_l = animatedline(ax_n_a, 'color', '#0072BD', 'linewidth', 2);
-ylabel('a')
-axis([1 T-N a_lim(1) a_lim(2)])
-
-ax_n_s = subplot(3,1,3);
-n_s_l = animatedline(ax_n_s, 'color', '#0072BD', 'linewidth', 2);
-ylabel('safety')
-axis([1 T-N 0 1])
+obca_mpc_safety = false;
+niv_mpc_safety = false;
 
 for i = 1:T-N
     fprintf('Iter: %i\n', i)
-    delete(p_EV)
-    delete(l_EV)
-
-    delete(p_OEV)
-    delete(l_OEV)
-
-    delete(p_NEV)
-    delete(l_NEV)
-
-    delete(p_TV)
-    delete(l_TV)
-
-    delete(t_EV_ref)
-
-    delete(t_Y)
-    delete(t_h_feas)
-    delete(t_niv_feas)
     
     % Get x, y, heading, and velocity from ego vehicle at current timestep
     EV_x  = EV.traj(1, end);
@@ -188,7 +179,12 @@ for i = 1:T-N
     TV_pred = [TV_x, TV_y, TV_th, TV_v.*cos(TV_th), TV_v.*sin(TV_th)]';
     
     % Get target vehicle trajectory relative to ego vehicle state
-    rel_state = TV_pred - EV_curr;
+    if ~obca_mpc_safety && EV_v*cos(EV_th) > 0
+        rel_state = TV_pred - EV_curr;
+    else
+        tmp = [EV_x; EV_y; EV_th; 0; EV_v*sin(EV_th)];
+        rel_state = TV_pred - tmp;
+    end
     
     % Predict strategy to use based on relative prediction of target
     % vehicle
@@ -207,18 +203,28 @@ for i = 1:T-N
     % Generate reference trajectory
     % Bias the ref trajectory
     yield = false;
-    if all( abs(rel_state(1, :)) > 10 )
+%     if all( abs(rel_state(1, :)) > 10 )
+    if all( abs(rel_state(1, :)) > 20 )
         % If it is still far away
         EV_x_ref = EV_x + [0:N]*dt*v_ref;
         EV_v_ref = v_ref*ones(1, N+1);
-    elseif max(score) > 0.5 && max_idx < 3
-        % If strategy is not yield
+        obca_mpc_safety = false;
+        niv_mpc_safety = false;
+    elseif max(score) > 0.6 && max_idx < 3
+        % If strategy is not yield discount reference velocity based on max
+        % likelihood
         % EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
         EV_x_ref = EV_x + [0:N]*dt*v_ref;
         EV_v_ref = max(score)*v_ref*ones(1, N+1);
+%         EV_v_ref = v_ref*ones(1, N+1);
+        obca_mpc_safety = false;
+        niv_mpc_safety = false;
+
     else
         % If yield or not clear to left or right
         yield = true;
+        EV_x_ref = EV_x + [0:N]*dt*v_ref;
+        EV_v_ref = v_ref*ones(1, N+1);
     end
     
     % EV_x_ref = EV_x + [0:N]*dt*v_ref;
@@ -308,47 +314,65 @@ for i = 1:T-N
     uu_opt = cell(1,2);
     par_feas = zeros(1,2);
     
-    % HPP OBCA MPC
-    obca_mpc_safety = false;
     
-    % [zz_opt{j}, uu_opt{j}, par_feas(j)] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
-    % If collision is possible along horizon and strategy
-    % prediction is unsure, then activate safety controller
-    if any(horizon_collision) && yield
-        obca_mpc_safety = true;
+    if ~obca_mpc_safety && yield
+        % Compute the distance threshold for applying braking assuming max
+        % decceleration is applied
+        rel_vx = TV_v(1)*cos(TV_th(1)) - EV_v*cos(EV_th);
+        min_ts = ceil(-rel_vx/abs(a_lim(1))/dt); % Number of timesteps requred for relative velocity to be zero
+        v_brake = abs(rel_vx)+[0:min_ts]*dt*a_lim(1); % Velocity when applying max decceleration
+%         brake_thresh = sum(abs(v_brake)*dt) + abs(TV_v(1)*cos(TV_th(1)))*(min_ts+1)*dt + 2*r; % Distance threshold for safety controller to be applied
+        brake_thresh = sum(abs(v_brake)*dt) + 4*r;
+        d = norm(TV_pred(1:2,1) - EV_curr(1:2), 2); % Distance between ego and target vehicles
+        if  d <= brake_thresh
+            % If distance between cars is within the braking threshold,
+            % activate safety controller
+            obca_mpc_safety = true;
+        end
     end
 
+    % HPP OBCA MPC
+    
     if ~obca_mpc_safety
         [zz_opt{1}, uu_opt{1}, par_feas(1)] = HPPobca_CFTOC(zz0{1}, N, hyp, TV_pred, zz_ref{1}, EV);
         if ~par_feas(1)
             % If OBCA MPC is infeasible, activate safety controller
             obca_mpc_safety = true;
             warning('HOBCA Not Feasible')
+        else
+            EV.z_opt = zz_opt{1};
+            EV.u_opt = uu_opt{1};
         end
+    end
+    
+    if obca_mpc_safety
+        obca_safety_control = obca_safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
+        [u_safe, obca_safety_control] = obca_safety_control.solve(zz0{1}, TV_pred, EV.inputs(:,end));
+        u_sol = [u_safe zeros(2,N-1)];
+        z_sol = [zz0{1} zeros(4,N)];
+        for j = 1:N
+            z_sol(:,j+1) = bikeFE_CoG(z_sol(:,j), u_sol(:,j), EV.L, dt);
+        end
+        zz_opt{1} = z_sol;
+        uu_opt{1} = u_sol;
         EV.z_opt = zz_opt{1};
         EV.u_opt = uu_opt{1};
     end
     
-    if obca_mpc_safety
-        [uu_opt{1}, obca_safety_control] = obca_safety_control.solve(zz0{1}, TV_pred, EV.inputs(:,end));
-        zz_opt{1} = [zz0{1} bikeFE_CoG(zz0{1}, uu_opt{1}, EV.L, dt)];
-    end
-    
     % Naive MPC
-    niv_mpc_safety = false;
-    [zz_opt{2}, uu_opt{2}, par_feas(2)] = niv_CFTOC(zz0{2}, N, TV_pred, r, zz_ref{2}, NEV);
-    if ~par_feas(2)
-        % If naive MPC is infeasible, activate safety controller
-        niv_mpc_safety = true;
-        warning('Naive Not Feasible')
-    end
-    NEV.z_opt = zz_opt{2};
-    NEV.u_opt = uu_opt{2};
-    
-    if niv_mpc_safety
-        [uu_opt{2}, niv_safety_control] = niv_safety_control.solve(zz0{2}, TV_pred, NEV.inputs(:,end));
-        zz_opt{2} = [zz0{2} bikeFE_CoG(zz0{2}, uu_opt{2}, NEV.L, dt)];
-    end
+%     [zz_opt{2}, uu_opt{2}, par_feas(2)] = niv_CFTOC(zz0{2}, N, TV_pred, r, zz_ref{2}, NEV);
+%     if ~par_feas(2)
+%         % If naive MPC is infeasible, activate safety controller
+%         niv_mpc_safety = true;
+%         warning('Naive Not Feasible')
+%     end
+%     NEV.z_opt = zz_opt{2};
+%     NEV.u_opt = uu_opt{2};
+%     
+%     if niv_mpc_safety
+%         [uu_opt{2}, niv_safety_control] = niv_safety_control.solve(zz0{2}, TV_pred, NEV.inputs(:,end));
+%         zz_opt{2} = [zz0{2} bikeFE_CoG(zz0{2}, uu_opt{2}, NEV.L, dt)];
+%     end
 
     feas = par_feas(1);
     z_opt = zz_opt{1};
@@ -356,11 +380,11 @@ for i = 1:T-N
     EV.traj = [EV.traj, z_opt(:, 2)];
     EV.inputs = [EV.inputs, u_opt(:, 1)];
 
-    feas_niv = par_feas(2);
-    z_niv = zz_opt{2};
-    u_niv = uu_opt{2};
-    NEV.traj = [NEV.traj, z_niv(:, 2)];
-    NEV.inputs = [NEV.inputs, u_niv(:, 1)];
+%     feas_niv = par_feas(2);
+%     z_niv = zz_opt{2};
+%     u_niv = uu_opt{2};
+%     NEV.traj = [NEV.traj, z_niv(:, 2)];
+%     NEV.inputs = [NEV.inputs, u_niv(:, 1)];
     % ============
 
     % ========== Sequencial Online Controller
@@ -389,13 +413,19 @@ for i = 1:T-N
     % NEV.inputs = [NEV.inputs, u_niv(:, 1)];
     % ==============
     
+    addpoints(h_v_l, i, z_opt(4,2));
     addpoints(h_d_l, i, u_opt(1,1));
     addpoints(h_a_l, i, u_opt(2,1));
     addpoints(h_s_l, i, double(obca_mpc_safety));
     
-    addpoints(n_d_l, i, u_niv(1,1));
-    addpoints(n_a_l, i, u_niv(2,1));
-    addpoints(n_s_l, i, double(niv_mpc_safety));
+%     addpoints(n_d_l, i, u_niv(1,1));
+%     addpoints(n_a_l, i, u_niv(2,1));
+%     addpoints(n_s_l, i, double(niv_mpc_safety));
+
+    % Delete lines and patches from last iteration
+    delete(p_EV); delete(l_EV); delete(p_OEV); delete(l_OEV); 
+%     delete(p_NEV); delete(l_NEV)
+    delete(p_TV); delete(l_TV); delete(t_EV_ref); delete(t_Y); delete(t_h_feas); %delete(t_niv_feas)
     
     % Plot
     axes(ax1);
@@ -408,16 +438,16 @@ for i = 1:T-N
     end
     t_h_feas = text(-30, 6, sprintf('HOBCA Online MPC feas: %d, Safety: %s', feas, s_h), 'color', 'b');
     hold on
-    if niv_mpc_safety
-        s_n = 'ON';
-    else
-        s_n = 'OFF';
-    end
-    t_niv_feas = text(-30, 4, sprintf('Naive Online MPC feas: %d, Safety: %s', feas_niv, s_n), 'color', 'm');
-    hold on
+%     if niv_mpc_safety
+%         s_n = 'ON';
+%     else
+%         s_n = 'OFF';
+%     end
+%     t_niv_feas = text(-30, 4, sprintf('Naive Online MPC feas: %d, Safety: %s', feas_niv, s_n), 'color', 'm');
+%     hold on
 
     [p_OEV, l_OEV] = plotCar(OEV.traj(1, i), OEV.traj(2, i), OEV.traj(3, i), OEV.width, OEV.length, OEV_plt_opts);
-    [p_NEV, l_NEV] = plotCar(NEV.traj(1, i), NEV.traj(2, i), NEV.traj(3, i), NEV.width, NEV.length, NEV_plt_opts);
+%     [p_NEV, l_NEV] = plotCar(NEV.traj(1, i), NEV.traj(2, i), NEV.traj(3, i), NEV.width, NEV.length, NEV_plt_opts);
     [p_EV, l_EV] = plotCar(EV_x, EV_y, EV_th, EV.width, EV.length, EV_plt_opts);
     
     p_TV = [];
@@ -450,9 +480,9 @@ for i = 1:T-N
             l_TV = [l_TV plot([z_detect(1, j) hyp(j).pos(1)], [z_detect(2, j) hyp(j).pos(2)], '-o', 'color', cmap(j,:))];
         end
         l_TV = [l_TV plot(EV_x_ref(j), EV_y_ref(j), 'o', 'color', cmap(j,:))];
-        if ~niv_mpc_safety
-            l_TV = [l_TV plot(z_niv(1, :), z_niv(2, :), 'x', 'color', 'm')];
-        end
+%         if ~niv_mpc_safety
+%             l_TV = [l_TV plot(z_niv(1, :), z_niv(2, :), 'x', 'color', 'm')];
+%         end
         if ~obca_mpc_safety
             l_TV = [l_TV plot(z_opt(1, j), z_opt(2, j), 'd', 'color', cmap(j,:))];
         end
