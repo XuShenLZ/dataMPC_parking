@@ -9,6 +9,7 @@ classdef MpcController
 		z_coeff = [0.05 0.1 0.1 0.5];
 		u_coeff = [0.01 0.01];
 		u_rate_lim = [0.03; 0.3];
+		y_lim = 3.5;
 	end
 
 	methods
@@ -34,10 +35,14 @@ classdef MpcController
 
 				if k < N
 					self.constr = [self.constr, -0.3*dt <= self.u(1, k+1) - self.u(1, k) <= 0.3*dt];
-					self.constr = [self.constr, -0.3 <= self.u(2, k+1) - self.u(2, k) <= 0.3];
+					self.constr = [self.constr, -3*dt <= self.u(2, k+1) - self.u(2, k) <= 3*dt];
 				end
 
+				% Dynamics
 				self.constr = [self.constr, self.z(:, k+1) == bikeFE_CoG(self.z(:,k), self.u(:, k), L, dt)];
+
+				% Up and bottom boundary
+				self.constr = [self.constr, -self.y_lim <= self.z(2, k+1) <= self.y_lim];
 
 				self.cost = self.cost ...
 					+ self.u_coeff(1)*self.u(1, k)^2 + self.u_coeff(2)*self.u(2, k)^2;

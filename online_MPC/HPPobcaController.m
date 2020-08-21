@@ -3,7 +3,6 @@ classdef HPPobcaController < MpcController
 		G
 		g
 		dmin = 0.001;
-		y_lim = 3.5;
 	end
 
 	methods
@@ -143,8 +142,6 @@ classdef HPPobcaController < MpcController
 
 					self.constr = [self.constr, lambda_j'*A*A'*lambda_j == 1];
 				end
-
-				self.constr = [self.constr, -self.y_lim <= self.z(2, k) <= self.y_lim];
 
 				% Hyperplane constraints
 				if ~isempty(hyp(k).w)
