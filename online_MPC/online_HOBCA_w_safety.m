@@ -9,6 +9,7 @@ addpath('../nominal_MPC')
 exp_num = 4;
 exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
+
 %% Load strategy prediction model
 model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
 model_file = strcat('../models/', model_name, '.mat');
@@ -21,8 +22,8 @@ T = length(TV.t); % Length of data
 v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
-% r = EV.width/2; % For directly incorporating hpp constraints into HOBCA
-% r = EV.length/2; % For directly incorporating hpp constraints into HOBCA
+
+obca_control = HPPobcaController(N, EV);
 
 % Instantiate safety controller
 d_lim = [-0.35, 0.35];
@@ -101,6 +102,11 @@ F(T-N) = struct('cdata',[],'colormap',[]);
 fig = figure('Position', [50 50 1200 600]);
 
 ax1 = axes('Position',[0.05 0.55 0.4 0.4]);
+yline(3.5, '-.', 'color', '#7E2F8E', 'linewidth', 2)
+hold on
+yline(-3.5, '-.', 'color', '#7E2F8E', 'linewidth', 2)
+axis equal
+axis(map_dim);
 
 ax2 = axes('Position',[0.05 0.05 0.4 0.4]);
 L_line = animatedline(ax2, 'color', '#0072BD', 'linewidth', 2);
@@ -130,7 +136,7 @@ axis([1 T-N a_lim(1) a_lim(2)])
 
 ax_h_s = axes('Position',[0.5 0.05 0.45 0.2]);
 h_s_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2);
-h_e_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2, 'linestyle', '--');
+h_e_l = animatedline(ax_h_s, 'color', '#D95319', 'linewidth', 2, 'linestyle', '--');
 legend('Safety', 'E-Brake')
 ylabel('safety')
 axis([1 T-N 0 1])
@@ -204,7 +210,6 @@ for i = 1:T-N
     addpoints(Y_line, i, score(3));
     
     % Generate reference trajectory
-    % Bias the ref trajectory
     yield = false;
 %     if all( abs(rel_state(1, :)) > 10 )
     if all( abs(rel_state(1, :)) > 20 ) || rel_state(1,1) < -r
@@ -252,10 +257,6 @@ for i = 1:T-N
     % occupied by the target vehicle at step k along the prediction horizon
     % and B(r) is the 2D ball with radius equal to the collision buffer
     % radius of the ego vehicle
-
-    % ======= Use the extended prev iteration to detect collision
-    % [z_WS, ~] = extend_prevItr(EV.z_opt, EV.u_opt, EV);
-    % z_detect = z_WS; % Use the extended previous iteration to construct hpp
     
     % ======= Use the ref traj to detect collision
     z_detect = z_ref; % Use the ref to construct hpp
@@ -343,9 +344,11 @@ for i = 1:T-N
 
     % HPP OBCA MPC
     obca_mpc_ebrake = false;
+    err = 0;
     if ~obca_mpc_safety
-        [zz_opt{1}, uu_opt{1}, par_feas(1)] = HPPobca_CFTOC(zz0{1}, N, hyp, TV_pred, zz_ref{1}, EV);
-        if ~par_feas(1)
+        u0 = EV.u_opt(:, 1);
+        [zz_opt{1}, uu_opt{1}, err] = obca_control.solve(zz0{1}, u0, zz_ref{1}, hyp, TV_pred, EV);
+        if err
             % If OBCA MPC is infeasible, activate ebrake controller
             obca_mpc_ebrake = true;
             fprintf('HOBCA not feasible, activating emergency brake\n')
@@ -409,7 +412,6 @@ for i = 1:T-N
 %         zz_opt{2} = [zz0{2} bikeFE_CoG(zz0{2}, uu_opt{2}, NEV.L, dt)];
 %     end
 
-    feas = par_feas(1);
     z_opt = zz_opt{1};
     u_opt = uu_opt{1};
     EV.traj = [EV.traj, z_opt(:, 2)];
@@ -421,32 +423,6 @@ for i = 1:T-N
 %     NEV.traj = [NEV.traj, z_niv(:, 2)];
 %     NEV.inputs = [NEV.inputs, u_niv(:, 1)];
     % ============
-
-    % ========== Sequencial Online Controller
-    % % Online HOBCA
-    % z0 = EV.traj(:, end);
-    % [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
-    % % [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
-    % if ~feas
-    %     warning('HOBCA not feasible')
-    % end
-    % EV.z_opt = z_opt;
-    % EV.u_opt = u_opt;
-    % EV.traj = [EV.traj, z_opt(:, 2)];
-    % EV.inputs = [EV.inputs, u_opt(:, 1)];
-
-    % % Naive Online Controller
-    % z0_niv = NEV.traj(:, end);
-    % z_ref_niv = [z0_niv(1) + [0:N]*dt*v_ref; ...
-    %              zeros(2, N+1); 
-    %              v_ref*ones(1, N+1)];
-    % [z_niv, u_niv, feas_niv] = niv_CFTOC(z0_niv, N, TV_pred, r, z_ref_niv, NEV);
-    % if ~feas_niv
-    %     warning('Naive not feasible')
-    % end
-    % NEV.traj = [NEV.traj, z_niv(:, 2)];
-    % NEV.inputs = [NEV.inputs, u_niv(:, 1)];
-    % ==============
     
     addpoints(h_v_l, i, z_opt(4,2));
     addpoints(h_d_l, i, u_opt(1,1));
@@ -477,7 +453,7 @@ for i = 1:T-N
     else
         e_h = 'OFF';
     end
-    t_h_feas = text(-29, 7, sprintf('HOBCA Online MPC feas: %d, Safety: %s, E-Brake: %s', feas, s_h, e_h), 'color', 'b');
+    t_h_feas = text(-29, 7, sprintf('HOBCA Online MPC: %s, Safety: %s, E-Brake: %s', yalmiperror(err), s_h, e_h), 'color', 'b');
     hold on
 %     if niv_mpc_safety
 %         s_n = 'ON';

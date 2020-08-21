@@ -10,6 +10,11 @@ Xu Shen, xu_shen@berkeley.edu
 3. Deep Learning Toolbox (For network training and predicting)
 
 ## Change log
+### 08/21/2020
+1. Added the safety controller (Ed)
+2. Rewrite all controllers in classdef. `MpcController` is the base class, and `HppController`, `NivController`, `HPPobcaController` are subclasses.
+3. Added the up and bottom constraints into `HPPobcaController`. And we can choose to be simple state constraints (fast but coarse) or OBCA constraints (slow but exact).
+
 ### 08/18/2020
 1. Added `ref_v` for tracking. The score will only discount the `ref_v`, instead of `ref_x`.
 2. Lock the strategy if there are already a certain steps colliding.
