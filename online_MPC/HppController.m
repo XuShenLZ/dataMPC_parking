@@ -30,6 +30,9 @@ classdef HppController < MpcController
 					self.constr = [self.constr, w(1)*self.z(1, k) + w(2)*self.z(2, k) >= b];
 				end
 
+				% Up and bottom
+				self.constr = [self.constr, -self.y_lim <= self.z(2, k) <= self.y_lim];
+
 				self.cost = self.cost ...
 						+ self.z_coeff(1)*(self.z(1, k) - z_ref(1, k))^2 ...
 						+ self.z_coeff(2)*(self.z(2, k) - z_ref(2, k))^2 ...

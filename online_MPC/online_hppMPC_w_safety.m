@@ -344,7 +344,7 @@ for i = 1:T-N
 
     % HPP MPC
     hpp_mpc_ebrake = false;
-    err = 0;
+    err = 16; % Default: "User Terminated"
     if ~hpp_mpc_safety
         u0 = EV.u_opt(:, 1);
         [zz_opt{1}, uu_opt{1}, err] = hpp_control.solve(zz0{1}, u0, zz_ref{1}, hyp);
@@ -381,7 +381,7 @@ for i = 1:T-N
         [u_ebrake, hpp_ebrake_control] = hpp_ebrake_control.solve(zz0{1}, TV_pred, EV.inputs(:,end));
         % Assume ebrake control is applied for one time step then no
         % control action is applied for rest of horizon
-        u_sol = [u_safe zeros(2,N-1)];
+        u_sol = [u_ebrake zeros(2,N-1)];
         z_sol = [zz0{1} zeros(4,N)];
         % Simulate this policy
         for j = 1:N
@@ -522,7 +522,7 @@ if ~isfolder('../movies/')
     mkdir('../movies')
 end
 
-movie_name = "hppMPC";
+movie_name = "safety_hppMPC";
 [file,path] = uiputfile(sprintf('../movies/%s_Exp%d_%s.mp4', ...
                     movie_name, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
 
