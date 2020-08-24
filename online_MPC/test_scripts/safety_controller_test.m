@@ -1,7 +1,8 @@
 close all
 clear all
 
-addpath('../nominal_MPC')
+addpath('../../nominal_MPC')
+addpath('../')
 
 wid = 2.0607;
 len = 4.9047;
