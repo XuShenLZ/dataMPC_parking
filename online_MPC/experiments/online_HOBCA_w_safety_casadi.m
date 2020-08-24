@@ -31,8 +31,10 @@ n_z = 4;
 n_u = 2;
 
 % Instantiate ego vehicle car dynamics
+L_r = EV.L/2;
+L_f = EV.L/2;
 M = 10; % RK4 steps
-EV_dynamics = bike_dynamics_rk4(EV.L/2, EV.L/2, dt, M);
+EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
 % Instantiate obca controller
 Q = diag([0.05 0.1 0.1 0.5]);
@@ -53,14 +55,10 @@ W = 0.5 * eye(3);
 Pm = 0.2 * eye(3);
 score = ones(3, 1) / 3;
 
-strategies = ["Left", "Right", "Yield"];
-
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
 
 obca_mpc_safety = false;
-
-rot = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 % Data to save
 z_traj = zeros(n_z, T-N+1);
@@ -76,8 +74,29 @@ sol_stats = cell(T-N, 1);
 
 safety = zeros(T-N, 1);
 ebrake = zeros(T-N, 1);
-scores = zeros(length(strategies), T-N);
+scores = zeros(3, T-N);
+strategy_idxs = zeros(T-N);
+strategy_locks = zeros(T-N);
 hyps = cell(T-N, 1);
+
+exp_params.exp_num = exp_num;
+exp_params.T = T;
+exp_params.model = model_name;
+exp_params.controller.N = N;
+exp_params.controller.Q = Q;
+exp_params.controller.R = R;
+exp_params.controller.d_min = d_min;
+exp_params.controller.d_lim = d_lim;
+exp_params.controller.a_lim = a_lim;
+exp_params.dynamics.dt = dt;
+exp_params.dynamics.M = M;
+exp_params.dynamics.L_r = L_r;
+exp_params.dynamics.L_f = L_f;
+exp_params.dynamics.n_z = n_z;
+exp_params.dynamics.n_u = n_u;
+exp_params.filter.V = V;
+exp_params.filter.W = W;
+exp_params.filter.Pm = Pm;
 
 for i = 1:T-N
     fprintf('=====================================\n')
@@ -296,17 +315,37 @@ for i = 1:T-N
     ebrake(i) = obca_mpc_ebrake;
     
     scores(:,i) = score;
+    strategy_idxs(i) = strategy_idx;
+    strategy_locks(i) = strategy_lock;
     
     ws_stats{i} = status_ws;
     sol_stats{i} = status_sol;
 end
 
-% filename = 'hobcaMPC';
-% save(sprintf('../data/%s_Exp%d_%s.mp4', filename, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')))
+if ~isfolder('../data/')
+    mkdir('../data')
+end
+filename = sprintf('../data/hobcaMPC_Exp%d_%s.mat', exp_num, datestr(now,'yyyy-mm-dd_HH-MM'));
+save(filename, 'exp_params', 'OEV', 'TV', ...
+    'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', ...
+    'scores', 'strategy_idxs', 'strategy_locks', 'hyps', 'safety', 'ebrake')
 
 %% Plot
+clear all
+
+addpath('../constraint_generation')
+addpath('../plotting')
+
+load('../data/hobcaMPC_Exp4_2020-08-23_19-40.mat')
 
 map_dim = [-30 30 -10 10];
+strategies = ["Left", "Right", "Yield"];
+
+T = exp_params.T;
+N = exp_params.controller.N;
+r = sqrt(OEV.width^2 + OEV.length^2)/2; % Collision buffer radius
+d_lim = exp_params.controller.d_lim;
+a_lim = exp_params.controller.a_lim;
 
 OEV_plt_opts.circle = false;
 OEV_plt_opts.frame = false;
@@ -338,6 +377,7 @@ for i = 1:length(phi)
     coll_bound_x(i) = x_b;
     coll_bound_y(i) = y_b;
 end
+rot = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 F(T-N) = struct('cdata',[],'colormap',[]);
 
@@ -388,15 +428,18 @@ for i = 1:T-N
     status_sol = sol_stats{i};
     hyp = hyps{i};
     z_ref = z_refs(:,:,i);
+    z_pred = z_preds(:,:,i);
+    u_pred = u_preds(:,:,i);
+    score = scores(:,i);
     
     if z_traj(1,i) > map_dim(2)
         F(i:end) = [];
         break
     end
     
-    addpoints(L_line, i, scores(1,i));
-    addpoints(R_line, i, scores(2,i));
-    addpoints(Y_line, i, scores(3,i));
+    addpoints(L_line, i, score(1));
+    addpoints(R_line, i, score(2));
+    addpoints(Y_line, i, score(3));
     
     addpoints(h_v_l, i, z_traj(4,i));
     addpoints(h_d_l, i, u_traj(1,i));
@@ -411,35 +454,35 @@ for i = 1:T-N
     
     % Plot
     axes(ax1);
-    t_Y = text(-29, 9, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idx), strategy_lock), 'color', 'k');
+    t_Y = text(-29, 9, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idxs(i)), strategy_locks(i)), 'color', 'k');
     hold on
     
-    if obca_mpc_safety
+    if safety(i)
         s_h = 'ON';
     else
         s_h = 'OFF';
     end
-    if obca_mpc_ebrake
+    if ebrake(i)
         e_h = 'ON';
     else
         e_h = 'OFF';
     end
-    if obca_mpc_safety
-        ws_status = 'n/a';
-        sol_status = 'n/a';
+    if safety(i)
+        ws_stat = 'n/a';
+        sol_stat = 'n/a';
     else
-        ws_status = status_ws.return_status;
+        ws_stat = status_ws.return_status;
         if status_ws.success
-            sol_status = status_sol.return_status;
+            sol_stat = status_sol.return_status;
         else
-            sol_status = 'n/a';
+            sol_stat = 'n/a';
         end
     end
-    t_h_feas = text(-29, 7, sprintf('HOBCA Online MPC (ws): %s, (sol): %s', ws_status, sol_status), 'color', 'b', 'interpreter', 'none');
+    t_h_feas = text(-29, 7, sprintf('HOBCA Online MPC (ws): %s, (sol): %s', ws_stat, sol_stat), 'color', 'b', 'interpreter', 'none');
     t_h_safe = text(-29, 5, sprintf('Safety: %s, E-Brake: %s', s_h, e_h), 'color', 'b');
 
     [p_OEV, l_OEV] = plotCar(OEV.traj(1,i), OEV.traj(2,i), OEV.traj(3,i), OEV.width, OEV.length, OEV_plt_opts);
-    [p_EV, l_EV] = plotCar(z_traj(1,i), z_traj(2,i), z_traj(3,i), EV.width, EV.length, EV_plt_opts);
+    [p_EV, l_EV] = plotCar(z_traj(1,i), z_traj(2,i), z_traj(3,i), OEV.width, OEV.length, EV_plt_opts);
     
     p_TV = [];
     l_TV = [];
@@ -452,12 +495,12 @@ for i = 1:T-N
             TV_plt_opts.frame = false;
         end
         
-        [p, l] = plotCar(TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, TV_plt_opts);
+        [p, l] = plotCar(TV.x(i+j-1), TV.y(i+j-1), TV.heading(i+j-1), TV.width, TV.length, TV_plt_opts);
         p_TV = [p_TV, p];
         l_TV = [l_TV, l];
         
         if ~all(hyp{j}.w == 0)
-            coll_bound_global = rot(TV_th(j))*[coll_bound_x; coll_bound_y] + [TV_x(j); TV_y(j)];
+            coll_bound_global = rot(TV.heading(i+j-1))*[coll_bound_x; coll_bound_y] + [TV.x(i+j-1); TV.y(i+j-1)];
             l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
             if hyp{j}.w(2) == 0
                 hyp_x = [hyp{j}.b, hyp{j}.b];
@@ -467,11 +510,11 @@ for i = 1:T-N
                 hyp_y = (-hyp{j}.w(1)*hyp_x+hyp{j}.b)/hyp{j}.w(2);
             end
             l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
-            l_TV = [l_TV plot([z_detect(1, j) hyp{j}.pos(1)], [z_detect(2, j) hyp{j}.pos(2)], '-o', 'color', cmap(j,:))];
+            l_TV = [l_TV plot([z_ref(1,j) hyp{j}.pos(1)], [z_ref(2,j) hyp{j}.pos(2)], '-o', 'color', cmap(j,:))];
         end
-        l_TV = [l_TV plot(EV_x_ref(j), EV_y_ref(j), 'o', 'color', cmap(j,:))];
-        if ~obca_mpc_safety
-            l_TV = [l_TV plot(z_preds(1,j,i), z_preds(2,j,i), 'd', 'color', cmap(j,:))];
+        l_TV = [l_TV plot(z_ref(1,j), z_ref(2,j), 'o', 'color', cmap(j,:))];
+        if ~safety(i)
+            l_TV = [l_TV plot(z_pred(1,j), z_pred(2,j), 'd', 'color', cmap(j,:))];
         end
     end
     axis equal
