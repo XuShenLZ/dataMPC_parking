@@ -2,17 +2,19 @@ clear('all');
 close('all');
 clc
 
-addpath('../nominal_MPC')
+addpath('../constraint_generation')
+addpath('../utils')
+addpath('../plotting')
 
 %% Load testing data
 % uiopen('load')
 exp_num = 4;
-exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
 %% Load strategy prediction model
 model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
-model_file = strcat('../models/', model_name, '.mat');
+model_file = strcat('../../models/', model_name, '.mat');
 load(model_file)
 
 %%

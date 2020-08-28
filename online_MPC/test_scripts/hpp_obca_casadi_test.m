@@ -1,7 +1,7 @@
 clear all
 close all
 
-addpath('../')
+% addpath('../')
 addpath('../utils')
 addpath('../controllers')
 

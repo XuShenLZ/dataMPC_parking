@@ -10,7 +10,7 @@ load('traj_data.mat');
 map_offset = [210, 285];
 
 %% Experiment number 
-exp_num = 1;
+exp_num = 4;
 close('all');
 
 %% Extract TV data
@@ -154,6 +154,7 @@ end
 plt_ops.color = 'blue';
 plt_ops.alpha = 0.5;
 plt_ops.circle = false;
+plt_ops.frame = false;
 
 plt_TV = plot(TV.x, TV.y, 'k--');
 plt_EV_ref = plot(EV.ref_z(1, :), EV.ref_z(2, :), 'g.');

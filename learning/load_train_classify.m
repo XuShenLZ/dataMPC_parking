@@ -7,11 +7,11 @@ rng(0);
 
 %% Load dataset file
 % If reconstructing the features and labels is
-% necessary, load the file named 'hpp_data_*.mat'
+% necessary, load the file named 'strategy_data_*.mat'
 
 % If you want to directly load the previously 
 % constructed feature-label, load the file named 
-% 'trn_val*.mat'
+% 'strat_trn_val*.mat'
 [file, path] = uigetfile('../hyperplane_dataset/*.mat', 'Select Raw Dataset');
 load([path, file])
 

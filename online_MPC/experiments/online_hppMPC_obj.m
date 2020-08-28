@@ -2,17 +2,17 @@ clear('all');
 close('all');
 clc
 
-addpath('../nominal_MPC')
+pathsetup();
 
 %% Load testing data
 % uiopen('load')
 exp_num = 30;
-exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
 %% Load strategy prediction model
 model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
-model_file = strcat('../models/', model_name, '.mat');
+model_file = strcat('../../models/', model_name, '.mat');
 load(model_file)
 
 %%
@@ -282,13 +282,14 @@ for i = 1:T-N
     for j = 1:2
         z0 = zz0{j};
         z_ref = zz_ref{j};
+        u0 = EV.u_opt(:, 1);
         if j == 1
             % [zz_opt{j}, uu_opt{j}, par_feas(j)] = hpp_CFTOC(z0, N, hyp, z_ref, EV);
-            % [zz_opt{j}, uu_opt{j}, par_feas(j)] = hpp_controller.solve(z0, z_ref, hyp);
-            [zz_opt{j}, uu_opt{j}, par_feas(j)] = obca_controller.solve(z0, z_ref, hyp, TV_pred, EV);
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = hpp_controller.solve(z0, u0, z_ref, hyp);
+            % [zz_opt{j}, uu_opt{j}, par_feas(j)] = obca_controller.solve(z0, u0, z_ref, hyp, TV_pred, EV);
         else
             % [zz_opt{j}, uu_opt{j}, par_feas(j)] = niv_CFTOC(z0, N, TV_pred, r, z_ref, NEV);
-            [zz_opt{j}, uu_opt{j}, par_feas(j)] = niv_controller.solve(z0, z_ref, TV_pred);
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = niv_controller.solve(z0, u0, z_ref, TV_pred);
         end
     end
     feas = par_feas(1);

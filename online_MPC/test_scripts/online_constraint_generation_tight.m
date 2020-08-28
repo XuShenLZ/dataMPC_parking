@@ -1,17 +1,18 @@
 close all
 clear all
 
-addpath('../nominal_MPC')
+addpath('../../nominal_MPC')
+addpath('../constraint_generation')
 
 %% Load testing data
 % uiopen('load')
-exp_num = 30;
-exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+exp_num = 1;
+exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
 %% Load strategy prediction model
 model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
-model_file = strcat('../models/', model_name, '.mat');
+model_file = strcat('../../models/', model_name, '.mat');
 load(model_file)
 
 %%
@@ -21,7 +22,6 @@ T = length(TV.t); % Length of data
 v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
-% r = EV.width/2;
 
 EV_plt_opts.circle = true;
 EV_plt_opts.frame = true;
@@ -41,13 +41,11 @@ l_TV = [];
 t_EV_ref = [];
 t_Y = [];
 
-% r_hyp = 0.5;
-r_hyp = r;
 phi = linspace(0, 2*pi, 200);
 coll_bound_x = zeros(1, 200);
 coll_bound_y = zeros(1, 200);
 for i = 1:length(phi)
-    [x_b, y_b, ~, ~] = get_collision_boundary_point(0, 0, phi(i), TV.width, TV.length, r_hyp);
+    [x_b, y_b, ~, ~] = get_collision_boundary_point(0, 0, phi(i), TV.width, TV.length, r);
     coll_bound_x(i) = x_b;
     coll_bound_y(i) = y_b;
 end
@@ -65,7 +63,8 @@ legend('Left', 'Right', 'Yield')
 prob_dim = [1 T-N -0.2 1.2];
 axis(prob_dim)
 
-for i = 100:T-N
+start_k = 100;
+for i = start_k:T-N
     delete(p_EV)
     delete(l_EV)
     delete(p_TV)
@@ -98,13 +97,6 @@ for i = 100:T-N
     X = reshape(rel_state, [], 1);
     score = net(X);
     [~, max_idx] = max(score);
-    if max_idx == 1
-        Y = 'Left';
-    elseif max_idx == 2
-        Y = 'Right';
-    else
-        Y = 'Yield';
-    end
     
     % Generate reference trajectory
     EV_x_ref = EV_x + [0:N]*dt*v_ref;
@@ -130,8 +122,12 @@ for i = 100:T-N
                 dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
                 dir = dir/(norm(dir));
             end
-            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
-                TV.width, TV.length, r_hyp);
+%             bias_dir = [-1; 0];
+%             bias_dir = [-cos(EV_th); -sin(EV_th)];
+%             s = score(max_idx);
+%             s = 1;
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_tight(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
+                TV.width, TV.length, r);
             hyp(j).w = hyp_w;
             hyp(j).b = hyp_b;
             hyp(j).pos = hyp_xy;
@@ -144,6 +140,13 @@ for i = 100:T-N
     
     % Plot
     subplot(2,1,1)
+    if max_idx == 1
+        Y = 'Left';
+    elseif max_idx == 2
+        Y = 'Right';
+    else
+        Y = 'Yield';
+    end
     t_Y = text(EV_x, EV_y+1.5*r, sprintf('Strategy: %s', Y), 'color', 'k');
     hold on
     [p_EV, l_EV] = plotCar(EV_x, EV_y, EV_th, EV.width, EV.length, EV_plt_opts);
@@ -151,7 +154,6 @@ for i = 100:T-N
     p_TV = [];
     l_TV = [];
     for j = 1:N+1
-%         TV_plt_opts.alpha = 1 - 0.7*((j-1)/(N));
         if j == 1
             TV_plt_opts.alpha = 0.5;
             TV_plt_opts.frame = true;
@@ -167,8 +169,8 @@ for i = 100:T-N
         if ~isempty(hyp(j).w)
             coll_bound_global = R(TV_th(j))*[coll_bound_x; coll_bound_y] + [TV_x(j); TV_y(j)];
             l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
-            if hyp(j).w(2) == 0
-                hyp_x = [hyp(j).b, hyp(j).b];
+            if abs(hyp(j).w(2)) <= 1e-8
+                hyp_x = [hyp(j).b/hyp(j).w(1), hyp(j).b/hyp(j).w(1)];
                 hyp_y = [map_dim(3), map_dim(4)];
             else
                 hyp_x = [map_dim(1), map_dim(2)];

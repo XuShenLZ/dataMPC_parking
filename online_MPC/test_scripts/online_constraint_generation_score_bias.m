@@ -1,17 +1,18 @@
 close all
 clear all
 
-addpath('../nominal_MPC')
+addpath('../../nominal_MPC')
+addpath('../constraint_generation')
 
 %% Load testing data
 % uiopen('load')
-exp_num = 1;
-exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+exp_num = 100;
+exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
 %% Load strategy prediction model
 model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
-model_file = strcat('../models/', model_name, '.mat');
+model_file = strcat('../../models/', model_name, '.mat');
 load(model_file)
 
 %%
@@ -121,12 +122,12 @@ for i = start_k:T-N
                 dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
                 dir = dir/(norm(dir));
             end
-%             bias_dir = [-1; 0];
+            bias_dir = [-1; 0];
 %             bias_dir = [-cos(EV_th); -sin(EV_th)];
-%             s = score(max_idx);
+            s = score(max_idx);
 %             s = 1;
-            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_tight(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
-                TV.width, TV.length, r);
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_score_bias(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
+                TV.width, TV.length, r, bias_dir, s);
             hyp(j).w = hyp_w;
             hyp(j).b = hyp_b;
             hyp(j).pos = hyp_xy;

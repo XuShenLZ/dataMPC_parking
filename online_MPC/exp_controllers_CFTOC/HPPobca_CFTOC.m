@@ -6,7 +6,7 @@ function [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV)
 
 	% ======== Warm Start Using Last Iteration
 
-	[z_WS, u_WS] = extend_prevItr(EV.z_opt, EV.u_opt, EV);
+	[z_WS, u_WS] = extend_prevItr(EV.z_opt, EV.u_opt, EV.dt, EV.L);
 
 	% =========== Warm Start Using HPP anchor points
 	% dt = EV.dt;

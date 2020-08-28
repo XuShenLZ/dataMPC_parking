@@ -12,7 +12,7 @@ classdef NivController < MpcController
 		end
 
 		%% solve: solve one iteration
-		function [z_opt, u_opt, err] = solve(self, z0, z_ref, TV_pred)
+		function [z_opt, u_opt, err] = solve(self, z0, u0, z_ref, TV_pred)
 
 			tic
 
@@ -20,6 +20,7 @@ classdef NivController < MpcController
 
 			% Initial State
 			self.constr = [self.constr, self.z(:, 1) == z0];
+			self.constr = [self.constr, -self.u_rate_lim <= self.u(:, 1) - u0 <= self.u_rate_lim];
 
 			for k = 1:self.N+1
 				
