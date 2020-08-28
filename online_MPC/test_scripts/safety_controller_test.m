@@ -17,7 +17,7 @@ control = control.set_speed_ref(2);
 
 x_0 = [-5; 2; 0; 2];
 
-TV_0 = [35; 0.1; pi; 3];
+TV_0 = [35; 2; pi; 3];
 
 x_traj = x_0;
 u_traj = [];
@@ -98,35 +98,36 @@ l2 = [];
 
 % x_f = trajectory_data(rollout).state(:,end);
 
-fig_1 = figure('Position', [50 50 600 600]);
-% plot_car(x_f(1), x_f(2), x_f(3), wid, len, plt_opts);
+fig = figure('Position', [50 50 1200 600]);
 
-fig_2 = figure('Position', [700 50 600 600]);
+ax1 = axes('Position',[0.05 0.3 0.4 0.4]);
+% yline(3.5, '-.', 'color', '#7E2F8E', 'linewidth', 2)
+% hold on
+% yline(-3.5, '-.', 'color', '#7E2F8E', 'linewidth', 2)
+axis equal
+axis(map_dim);
 
-ax_1 = subplot(4,1,1);
-d_l = animatedline(ax_1, 'color', '#0072BD', 'linewidth', 2);
+ax_th = axes('Position',[0.5 0.75 0.45 0.2]);
+th_l = animatedline(ax_th, 'color', '#0072BD', 'linewidth', 2);
 ylabel('theta')
-d_lim = [1 T -pi pi];
-axis(d_lim)
+axis([1 T -pi pi])
 
-ax_2 = subplot(4,1,2);
-v_l = animatedline(ax_2, 'color', '#0072BD', 'linewidth', 2);
+ax_v = axes('Position',[0.5 0.52 0.45 0.2]);
+v_l = animatedline(ax_v, 'color', '#0072BD', 'linewidth', 2);
 ylabel('v')
-v_lim = [1 T -2 2];
-axis(v_lim)
+axis([1 T -3 3])
 
-ax_3 = subplot(4,1,3);
-o_l = animatedline(ax_3, 'color', '#0072BD', 'linewidth', 2);
+ax_d = axes('Position',[0.5 0.28 0.45 0.2]);
+d_l = animatedline(ax_d, 'color', '#0072BD', 'linewidth', 2);
 ylabel('delta')
-omega_lim = [1 T -0.35 0.35];
-axis(omega_lim)
+axis([1 T -0.35 0.35])
 
-ax_4 = subplot(4,1,4);
-a_l = animatedline(ax_4, 'color', '#0072BD', 'linewidth', 2);
+ax_a = axes('Position',[0.5 0.05 0.45 0.2]);
+a_l = animatedline(ax_a, 'color', '#0072BD', 'linewidth', 2);
 ylabel('a')
-a_lim = [1 T -1 1];
-axis(a_lim)
+axis([1 T -1 1])
 
+F(T) = struct('cdata',[],'colormap',[]);
 
 for i = 1:T
     delete(p1)
@@ -146,7 +147,7 @@ for i = 1:T
     TV_y_k = TV_traj(2,i);
     TV_theta_k = TV_traj(3,i);
     
-    set(0, 'currentfigure', fig_1)
+    axes(ax1)
     [p1, l1] = plotCar(EV_k, y_k, EV_theta, wid, len, plt_opts);
     hold on
     [p2, l2] = plotCar(TV_x_k, TV_y_k, TV_theta_k, wid, len, TV_plt_opts);
@@ -154,14 +155,25 @@ for i = 1:T
     axis equal
     axis(map_dim);
     
-    addpoints(d_l, i, EV_theta);
+    addpoints(th_l, i, EV_theta);
     addpoints(v_l, i, EV_v);
-    addpoints(o_l, i, delta_k);
+    addpoints(d_l, i, delta_k);
     addpoints(a_l, i, a_k);
     drawnow
     
     pause(0.05)
+    
+    F(i) = getframe(fig);
 end
+
+movie_name = 'safety_controller.mp4';
+[file,path] = uiputfile(movie_name);
+
+v = VideoWriter([path, file], 'MPEG-4');
+v.FrameRate = 10;
+open(v);
+writeVideo(v,F);
+close(v);
 
 function x_kp1 = f_true(x_k, u_k, dt)
     L_r = 0.3;
