@@ -5,11 +5,16 @@ Xu Shen, xu_shen@berkeley.edu
 
 ## Dependencies
 ### MATLAB:
-1. MPT Toolbox (For solving and viz)
+1. MPT Toolbox and Yalmip (For solving and viz)
 2. Parallel Computing Toolbox (Only for generating dataset)
 3. Deep Learning Toolbox (For network training and predicting)
+4. CasADi (For controller formulation)
 
 ## Change log
+### 08/27/2020
+1. Added the CasADi implementation (Ed).
+2. Reorgainzed the files. Now all the experiment scripts are in `./online_MPC/experiments`, using either class or CasADi formulation of controllers. All CFTOC-based scripts and functions are in `./online_MPC/exp_controllers_CFTOC`.
+
 ### 08/21/2020
 1. Added the safety controller (Ed)
 2. Rewrite all controllers in classdef. `MpcController` is the base class, and `HppController`, `NivController`, `HPPobcaController` are subclasses.

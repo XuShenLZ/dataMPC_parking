@@ -16,7 +16,7 @@ load([path, file], 'val_exps')
 fprintf('The exp_nums in validation set are: [%s]\n', num2str(val_exps, '%d,'))
 
 %% Load TV data
-exp_num = 44;
+exp_num = 30;
 load(['../data/exp_num_', num2str(exp_num), '.mat'])
 
 training_data = training_set{exp_num};
@@ -59,8 +59,8 @@ end
 fig = figure();
 ax1 = subplot(2,1,1);
 plot(TV.x, TV.y, 'k--');
-EV_line = animatedline(ax1, 'color', 'r', 'linestyle', 'none', 'marker', 's');
-TV_line = animatedline(ax1, 'color', 'b', 'linestyle', 'none', 'marker', 's');
+EV_line = animatedline(ax1, 'color', 'b', 'linestyle', 'none', 'marker', 's');
+TV_line = animatedline(ax1, 'color', 'k', 'linestyle', 'none', 'marker', 's');
 map_dim = [-30 30 -10 10];
 hold on
 
@@ -116,8 +116,8 @@ for i = 1:T-N
     % t_TV = plot(TV.x(i:i+N), TV.y(i:i+N), 'bs');
     % hold on
     
-    t_Y = text(-25, 2, sprintf('Strategy: %s', Y), 'color', 'k');
-    t_Y_hat = text(-25, -2, sprintf('Strategy: %s', Y_hat), 'color', 'm');
+    t_Y = text(-25, 2, sprintf('True Strategy: %s', Y), 'color', 'k');
+    t_Y_hat = text(-25, -2, sprintf('Predicted Strategy: %s', Y_hat), 'color', 'm');
     axis equal
     axis(map_dim);
 

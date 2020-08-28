@@ -2,16 +2,19 @@ clear('all');
 close('all');
 clc
 
-addpath('../nominal_MPC')
+addpath('../constraint_generation')
+addpath('../utils')
+addpath('../plotting')
 
 %% Load testing data
 % uiopen('load')
 exp_num = 30;
-exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
+
 %% Load strategy prediction model
 model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
-model_file = strcat('../models/', model_name, '.mat');
+model_file = strcat('../../models/', model_name, '.mat');
 load(model_file)
 
 %%
@@ -21,8 +24,6 @@ T = length(TV.t); % Length of data
 v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
-% r = EV.width/2; % For directly incorporating hpp constraints into HOBCA
-% r = EV.length/2; % For directly incorporating hpp constraints into HOBCA
 
 % ==== Filter Setup
 V = 0.01 * eye(3);
@@ -74,8 +75,8 @@ p_TV = [];
 l_TV = [];
 t_EV_ref = [];
 t_Y = [];
+t_hyp_feas = [];
 t_niv_feas = [];
-t_h_feas = [];
 
 phi = linspace(0, 2*pi, 200);
 coll_bound_x = zeros(1, 200);
@@ -119,7 +120,7 @@ for i = 1:T-N
     delete(t_EV_ref)
 
     delete(t_Y)
-    delete(t_h_feas)
+    delete(t_hyp_feas)
     delete(t_niv_feas)
     
     % Get x, y, heading, and velocity from ego vehicle at current timestep
@@ -191,7 +192,7 @@ for i = 1:T-N
             EV_x_ref(j+1) = EV_x_ref(j) + v_profile(j)*dt;
         end
     end
-    
+
     % EV_x_ref = EV_x + [0:N]*dt*v_ref;
     EV_y_ref = zeros(1, length(EV_x_ref));
     EV_h_ref = zeros(1, length(EV_x_ref));
@@ -211,9 +212,10 @@ for i = 1:T-N
     % ======= Use the extended prev iteration to detect collision
     % [z_WS, ~] = extend_prevItr(EV.z_opt, EV.u_opt, EV);
     % z_detect = z_WS; % Use the extended previous iteration to construct hpp
-    
+
     % ======= Use the ref traj to detect collision
     z_detect = z_ref; % Use the ref to construct hpp
+    
     horizon_collision = [];
     for j = 1:N+1
         ref = z_detect(1:2, j); 
@@ -243,11 +245,8 @@ for i = 1:T-N
                 dir = [EV_x-TV_x(j); EV_y-TV_y(j)];
                 dir = dir/(norm(dir));
             end
-            % ==== Unbiased Normal HPP
-            % [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
-            % ==== Unbiased Tight HPP
-            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp_tight(ref, dir, TV_x(j), TV_y(j), TV_th(j), ...
-                TV.width, TV.length, r);
+            % ==== Unbiased HPP
+            [hyp_xy, hyp_w, hyp_b] = get_extreme_pt_hyp(ref, dir, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
             % ==== Biased HPP
             % bias_dir = [-1; 0];
             % % bias_dir = [-cos(EV_th); -sin(EV_th)];
@@ -281,10 +280,9 @@ for i = 1:T-N
         z0 = zz0{j};
         z_ref = zz_ref{j};
         if j == 1
-            % [zz_opt{j}, uu_opt{j}, par_feas(j)] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
-            [zz_opt{j}, uu_opt{j}, par_feas(j)] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+            [zz_opt{j}, uu_opt{j}, par_feas(j)] = hpp_CFTOC(z0, N, hyp, z_ref, EV);
             if ~par_feas(j)
-                warning('HOBCA Not Feasible')
+                warning('HPP Not Feasible')
             end
         else
             [zz_opt{j}, uu_opt{j}, par_feas(j)] = niv_CFTOC(z0, N, TV_pred, r, z_ref, NEV);
@@ -296,30 +294,24 @@ for i = 1:T-N
     feas = par_feas(1);
     z_opt = zz_opt{1};
     u_opt = uu_opt{1};
-    EV.z_opt = z_opt;
-    EV.u_opt = u_opt;
     EV.traj = [EV.traj, z_opt(:, 2)];
     EV.inputs = [EV.inputs, u_opt(:, 1)];
 
     feas_niv = par_feas(2);
     z_niv = zz_opt{2};
     u_niv = uu_opt{2};
-    NEV.z_opt = z_niv;
-    NEV.u_opt = u_niv;
     NEV.traj = [NEV.traj, z_niv(:, 2)];
     NEV.inputs = [NEV.inputs, u_niv(:, 1)];
     % ============
 
-    % ========== Sequencial Online Controller
-    % % Online HOBCA
+    % Sequencial Online Controller
+    % ============ 
     % z0 = EV.traj(:, end);
-    % [z_opt, u_opt, feas] = hobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
-    % % [z_opt, u_opt, feas] = HPPobca_CFTOC(z0, N, hyp, TV_pred, z_ref, EV);
+    % z_ref = [EV_x_ref; EV_y_ref; zeros(1, N+1); v_ref*ones(1, N+1)];
+    % [z_opt, u_opt, feas] = hpp_CFTOC(z0, N, hyp, Y, z_ref, EV);
     % if ~feas
-    %     warning('HOBCA not feasible')
+    %     warning('Not Optimal')
     % end
-    % EV.z_opt = z_opt;
-    % EV.u_opt = u_opt;
     % EV.traj = [EV.traj, z_opt(:, 2)];
     % EV.inputs = [EV.inputs, u_opt(:, 1)];
 
@@ -330,7 +322,7 @@ for i = 1:T-N
     %              v_ref*ones(1, N+1)];
     % [z_niv, u_niv, feas_niv] = niv_CFTOC(z0_niv, N, TV_pred, r, z_ref_niv, NEV);
     % if ~feas_niv
-    %     warning('Naive not feasible')
+    %     warning('Not Optimal')
     % end
     % NEV.traj = [NEV.traj, z_niv(:, 2)];
     % NEV.inputs = [NEV.inputs, u_niv(:, 1)];
@@ -340,7 +332,7 @@ for i = 1:T-N
     axes(ax1);
     t_Y = text(-25, 8, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idx), strategy_lock), 'color', 'k');
     hold on
-    t_h_feas = text(-25, 6, sprintf('HOBCA Online MPC feas: %d', feas), 'color', 'b');
+    t_hyp_feas = text(-25, 6, sprintf('HPP Online MPC feas: %d', feas), 'color', 'b');
     hold on
     t_niv_feas = text(-25, 4, sprintf('Naive Online MPC feas: %d', feas_niv), 'color', 'm');
     hold on
@@ -401,7 +393,7 @@ if ~isfolder('../movies/')
     mkdir('../movies')
 end
 
-movie_name = "hobcaMPC";
+movie_name = "hppMPC";
 [file,path] = uiputfile(sprintf('../movies/%s_Exp%d_%s.mp4', ...
                     movie_name, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
 

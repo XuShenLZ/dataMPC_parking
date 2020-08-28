@@ -2,11 +2,7 @@ clear all
 close all
 clc
 
-addpath('../dynamics')
-addpath('../controllers')
-addpath('../constraint_generation')
-addpath('../utils')
-addpath('../plotting')
+pathsetup();
 
 %% Load testing data
 % uiopen('load')
@@ -336,7 +332,7 @@ clear all
 addpath('../constraint_generation')
 addpath('../plotting')
 
-load('../data/hobcaMPC_Exp4_2020-08-23_19-40.mat')
+load('../data/hobcaMPC_Exp4_2020-08-24_15-00.mat')
 
 map_dim = [-30 30 -10 10];
 strategies = ["Left", "Right", "Yield"];

@@ -1,12 +1,13 @@
 close all
 clear all
 
-addpath('../nominal_MPC')
+addpath('../constraint_generation')
+addpath('../plotting')
 
 %% Load testing data
 % uiopen('load')
 exp_num = 4;
-exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
 %%
@@ -20,10 +21,12 @@ r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 EV_plt_opts.circle = true;
 EV_plt_opts.color = 'b';
 EV_plt_opts.alpha = 0.5;
+EV_plt_opts.frame = false;
 
 TV_plt_opts.circle = false;
 TV_plt_opts.color = 'r';
 TV_plt_opts.alpha = 0.5;
+TV_plt_opts.frame = false;
 
 map_dim = [-30 30 -10 10];
 p_EV = [];
