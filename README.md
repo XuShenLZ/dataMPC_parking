@@ -9,8 +9,13 @@ Xu Shen, xu_shen@berkeley.edu
 2. Parallel Computing Toolbox (Only for generating dataset)
 3. Deep Learning Toolbox (For network training and predicting)
 4. CasADi (For controller formulation)
+5. Forces Pro (For fast implementation)
 
 ## Change log
+### 08/30/2020
+1. Added Forces Pro implementation. The class is defined in `./online_MPC/controllers/HPPControlFP.m` and the experiment script is `./online_MPC/experiments/online_HPP_force.m`
+2. The Forces Pro generated files are all added into `.gitignore` with the format `FP_*`
+
 ### 08/27/2020
 1. Added the CasADi implementation (Ed).
 2. Reorgainzed the files. Now all the experiment scripts are in `./online_MPC/experiments`, using either class or CasADi formulation of controllers. All CFTOC-based scripts and functions are in `./online_MPC/exp_controllers_CFTOC`.
