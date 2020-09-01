@@ -183,7 +183,7 @@ classdef hpp_obca_controller_casadi
                 % Hyperplane constraints
                 self.hyp_ph{k}.w = self.opti.parameter(self.n_x, 1);
                 self.hyp_ph{k}.b = self.opti.parameter(1);
-                self.opti.subject_to(dot(self.hyp_ph{k}.w, self.z(:,k)) >= self.hyp_ph{k}.b);
+                self.opti.subject_to(dot(self.hyp_ph{k}.w, self.z(:,k+1)) >= self.hyp_ph{k}.b);
                 
                 % Tracking and input cost
                 self.obj = self.obj + bilin(Q, self.z(:,k+1)-self.z_ref(:,k+1), self.z(:,k+1)-self.z_ref(:,k+1)) + ...
@@ -253,8 +253,8 @@ classdef hpp_obca_controller_casadi
             self.opti.set_value(self.z_ref, z_ref);
             
             for i = 1:self.N
-                self.opti.set_value(self.hyp_ph{i}.w, hyp{i}.w);
-                self.opti.set_value(self.hyp_ph{i}.b, hyp{i}.b);
+                self.opti.set_value(self.hyp_ph{i+1}.w, hyp{i}.w);
+                self.opti.set_value(self.hyp_ph{i+1}.b, hyp{i}.b);
             end
             
             try

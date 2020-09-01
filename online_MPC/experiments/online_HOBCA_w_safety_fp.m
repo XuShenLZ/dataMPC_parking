@@ -1,6 +1,6 @@
 clear all
 close all
-clc
+% clc
 
 pathsetup();
 
@@ -36,7 +36,41 @@ EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 Q = diag([0.05 0.1 0.1 0.5]);
 R = diag([0.01 0.01]);
 d_min = 0.001;
-obca_controller = hpp_obca_controller_casadi(N, Q, R, EV_dynamics, EV.G, EV.g, d_min, 1, 4, 2);
+u_u = [0.35; 1];
+u_l = [-0.35; -1];
+du_u = [0.3; 3];
+du_l = [-0.3; -3];
+
+ws_params.name = 'fp_ws_solver';
+ws_params.N = N;
+ws_params.n_x = n_z;
+ws_params.n_u = n_u;
+ws_params.n_obs = 1;
+ws_params.n_ineq = 4;
+ws_params.d_ineq = 2;
+ws_params.G = EV.G;
+ws_params.g = EV.g;
+
+opt_params.name = 'fp_opt_solver';
+opt_params.N = N;
+opt_params.n_x = n_z;
+opt_params.n_u = n_u;
+opt_params.n_obs = 1;
+opt_params.n_ineq = 4;
+opt_params.d_ineq = 2;
+opt_params.G = EV.G;
+opt_params.g = EV.g;
+opt_params.d_min = d_min;
+opt_params.Q = Q;
+opt_params.R = R;
+opt_params.u_u = u_u;
+opt_params.u_l = u_l;
+opt_params.du_u = du_u;
+opt_params.du_l = du_l;
+opt_params.dynamics = EV_dynamics;
+opt_params.dt = dt;
+
+obca_controller = hpp_obca_controller_FP(true, ws_params, opt_params);
 
 % Instantiate safety controller
 d_lim = [-0.35, 0.35];
@@ -225,7 +259,7 @@ for i = 1:T-N
     end
     
     % Generate target vehicle obstacle descriptions
-    tv_obs = get_car_poly_obs(TV_pred(:,2:end), TV.width, TV.length);
+    tv_obs = get_car_poly_obs(TV_pred, TV.width, TV.length);
     
     if ~obca_mpc_safety && yield
         % Compute the distance threshold for applying braking assuming max
@@ -262,7 +296,7 @@ for i = 1:T-N
     if ~obca_mpc_safety
         [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
         if status_ws.success
-            [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, hyp(2:end));
+            [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs, hyp);
         end
         if ~status_ws.success || ~status_sol.success
             % If OBCA MPC is infeasible, activate ebrake controller
