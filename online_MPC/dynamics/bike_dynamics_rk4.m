@@ -36,5 +36,9 @@ classdef bike_dynamics_rk4
                 x_kp1 = x_kp1 + h_k*(a1 + 2*a2 + 2*a3 + a4)/6;
             end
         end
+        
+        function z_kp1 = f_dt_aug(self, x_k, u_k)
+            z_kp1 = [self.f_dt(x_k, u_k); u_k];
+        end
     end
 end
