@@ -15,13 +15,17 @@ classdef hpp_obca_controller_FP
             self.opt_params = opt_params;
             
             if ~exist(strcat(ws_params.name, '.m'), 'file') || regen
+                fprintf('===============================================\n')
                 fprintf('Generating forces pro warm start solver: %s\n', strcat(ws_params.name, '.m'))
                 generate_forces_pro_ws_solver(ws_params);
+                fprintf('\n')
             end
             
             if ~exist(strcat(opt_params.name, '.m'), 'file') || regen
+                fprintf('===============================================\n')
                 fprintf('Generating forces pro opt solver: %s\n', strcat(opt_params.name, '.m'))
                 generate_forces_pro_opt_solver(opt_params);
+                fprintf('\n')
             end
                 
         end
@@ -57,9 +61,10 @@ classdef hpp_obca_controller_FP
                 [output, exitflag, info] = feval(self.ws_params.name, problem);
                 
                 if exitflag == 1
-                    fprintf('\nFORCES took %d iterations and %f seconds to solve the problem.\n',info.it,info.solvetime);
+                    fprintf('FORCES took %d iterations and %f seconds to solve the problem.\n',info.it,info.solvetime);
                 	status.success = true;
                     status.return_status = 'Successfully Solved';
+                    status.solve_time = info.solvetime;
                     
                     l_ws = zeros(n_obs*n_ineq, self.ws_params.N);
                     m_ws = zeros(n_obs*n_ineq, self.ws_params.N);  
@@ -73,8 +78,10 @@ classdef hpp_obca_controller_FP
                     self.lambda_ws = l_ws;
                     self.mu_ws = m_ws;
                 else
+                    fprintf('Solving Failed, exitflag = %d\n', exitflag);
                     status.success = false;
                     status.return_status = sprintf('Solving Failed, exitflag = %d', exitflag);
+                    status.solve_time = nan;
                 end
             else
                 error('Solver: %s does not exist', strcat(self.ws_params.name, '.m'))
@@ -86,9 +93,6 @@ classdef hpp_obca_controller_FP
             n_ineq = self.opt_params.n_ineq;
             n_x = self.opt_params.n_x;
             n_u = self.opt_params.n_u;
-            
-            z_pred = nan;
-            u_pred = nan;
             
             x0 = [];
             params = [];
@@ -110,6 +114,14 @@ classdef hpp_obca_controller_FP
                 else
                     x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k)];
                 end
+                
+                if k == 1
+                    problem.(['z_init_',sprintf('%02d', k-1)]) = [self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k)];
+                elseif k == self.opt_params.N+1
+                    problem.(['z_init_',sprintf('%02d', k-1)]) = [self.z_ws(:,k); zeros(n_obs*n_ineq,1); zeros(n_obs*n_ineq,1)];
+                else
+                    problem.(['z_init_',sprintf('%02d', k-1)]) = [self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k)];
+                end
             end
             
             problem.x0 = x0;
@@ -121,27 +133,29 @@ classdef hpp_obca_controller_FP
                 [output, exitflag, info] = feval(self.opt_params.name, problem);
                 
                 if exitflag == 1
-                    fprintf('\nFORCES took %d iterations and %f seconds to solve the problem.\n',info.it,info.solvetime);
+                    fprintf('FORCES took %d iterations and %f seconds to solve the problem.\n',info.it,info.solvetime);
                 	status.success = true;
                     status.return_status = 'Successfully Solved';
-                    
-                    z_pred = zeros(n_x, self.opt_params.N+1);
-                    u_pred = zeros(n_u, self.opt_params.N);  
-                    for k = 1:self.ws_params.N
-                        sol = output.(['x',sprintf('%02d', k)]);
-                        z_pred(:,k) = sol(1:n_x);
-                        u_pred(:,k) = sol(n_x+n_obs*n_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u);
-                    end
-                    sol = output.(['x',sprintf('%02d', self.ws_params.N+1)]);
-                    z_pred(:,self.ws_params.N+1) = sol(1:n_x);
+                    status.solve_time = info.solvetime;
                 else
+                    fprintf('Solving Failed, exitflag = %d\n', exitflag);
                     status.success = false;
                     status.return_status = sprintf('Solving Failed, exitflag = %d', exitflag);
+                    status.solve_time = nan;
                 end
+                
+                z_pred = zeros(n_x, self.opt_params.N+1);
+                u_pred = zeros(n_u, self.opt_params.N);  
+                for k = 1:self.ws_params.N
+                    sol = output.(['x',sprintf('%02d', k)]);
+                    z_pred(:,k) = sol(1:n_x);
+                    u_pred(:,k) = sol(n_x+n_obs*n_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u);
+                end
+                sol = output.(['x',sprintf('%02d', self.ws_params.N+1)]);
+                z_pred(:,self.ws_params.N+1) = sol(1:n_x);
             else
                 error('Solver: %s does not exist', strcat(self.ws_params.name, '.m'))
             end
-		end
-
+        end
     end
 end

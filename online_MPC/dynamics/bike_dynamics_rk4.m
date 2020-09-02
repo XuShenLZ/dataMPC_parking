@@ -37,8 +37,8 @@ classdef bike_dynamics_rk4
             end
         end
         
-        function z_kp1 = f_dt_aug(self, x_k, u_k)
-            z_kp1 = [self.f_dt(x_k, u_k); u_k];
+        function x_kp1 = f_dt_aug(self, x_k, u_k)
+            x_kp1 = vertcat(self.f_dt(x_k, u_k), u_k);
         end
     end
 end

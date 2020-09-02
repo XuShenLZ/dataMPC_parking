@@ -1,6 +1,6 @@
 clear all
 close all
-% clc
+clc
 
 pathsetup();
 
@@ -128,6 +128,8 @@ exp_params.filter.V = V;
 exp_params.filter.W = W;
 exp_params.filter.Pm = Pm;
 
+ws_solve_times = [];
+opt_solve_times = [];
 for i = 1:T-N
     fprintf('=====================================\n')
     fprintf('Iteration: %i\n', i)
@@ -252,7 +254,9 @@ for i = 1:T-N
             hyp{j}.b = hyp_b;
             hyp{j}.pos = hyp_xy;
         else
-            hyp{j}.w = zeros(n_z,1);
+%             hyp{j}.w = zeros(n_z,1);
+%             hyp{j}.b = 0;
+            hyp{j}.w = [sign(ref(1)); sign(ref(2)); zeros(2,1)];
             hyp{j}.b = 0;
             hyp{j}.pos = nan;
         end
@@ -296,12 +300,20 @@ for i = 1:T-N
     if ~obca_mpc_safety
         [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
         if status_ws.success
+            ws_solve_times = [ws_solve_times, status_ws.solve_time];
             [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs, hyp);
+%             if i == 1
+%                 [status_ws, obca_controller] = obca_controller.solve_ws(z_pred, u_pred, tv_obs);
+%                 [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs, hyp);
+%             end
         end
+        
         if ~status_ws.success || ~status_sol.success
             % If OBCA MPC is infeasible, activate ebrake controller
             obca_mpc_ebrake = true;
             fprintf('HOBCA not feasible, activating emergency brake\n')
+        else
+            opt_solve_times = [opt_solve_times, status_sol.solve_time];
         end
     end
     
@@ -360,13 +372,14 @@ save(filename, 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', ...
     'scores', 'strategy_idxs', 'strategy_locks', 'hyps', 'safety', 'ebrake')
 
+
 %% Plot
 clear all
 
 addpath('../constraint_generation')
 addpath('../plotting')
 
-load('../data/hobcaMPC_Exp4_2020-08-24_15-00.mat')
+load('../data/hobcaMPC_Exp4_2020-09-02_11-35.mat')
 
 map_dim = [-30 30 -10 10];
 strategies = ["Left", "Right", "Yield"];
@@ -529,7 +542,7 @@ for i = 1:T-N
         p_TV = [p_TV, p];
         l_TV = [l_TV, l];
         
-        if ~all(hyp{j}.w == 0)
+        if ~isnan(hyp{j}.pos)
             coll_bound_global = rot(TV.heading(i+j-1))*[coll_bound_x; coll_bound_y] + [TV.x(i+j-1); TV.y(i+j-1)];
             l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
             if hyp{j}.w(2) == 0

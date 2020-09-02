@@ -107,12 +107,32 @@ function generate_forces_pro_opt_solver(params)
 %     opt_codeopts.maxit = 300;
     opt_codeopts.overwrite = 1;
     opt_codeopts.printlevel = 2;
-    opt_codeopts.optlevel = 0;
-    opt_codeopts.nlp.linear_solver = 'symm_indefinite';
+    opt_codeopts.optlevel = 3;
+    opt_codeopts.init = 2;
+
     opt_codeopts.nlp.ad_tool = 'casadi-351';
     opt_codeopts.nlp.BuildSimulinkBlock = 0;
-    opt_codeopts.nlp.hessian_approximation = 'gauss-newton';
+    opt_codeopts.nlp.linear_solver = 'symm_indefinite';
+%     opt_codeopts.nlp.hessian_approximation = 'gauss-newton';
 %     opt_codeopts.nlp.BarrStrat = 'monotone';
+
+%     opt_codeopts.linesearch.minstep = 1e-8;
+%     opt_codeopts.linesearch.maxstep = 0.9;
+
+%     opt_codeopts.nlp.reg_eta_dw = 1;
+%     opt_codeopts.nlp.reg_beta_dw = 10;
+%     opt_codeopts.nlp.reg_min_dw = 1;
+%     opt_codeopts.nlp.reg_gamma_dw = 3;
+% 
+%     opt_codeopts.nlp.reg_eta_dc = 1;
+%     opt_codeopts.nlp.reg_beta_dc = 10;
+%     opt_codeopts.nlp.reg_min_dc = 1;
+%     opt_codeopts.nlp.reg_gamma_dc = 3;
+    
+%     opt_codeopts.regularize.epsilon = 1E-12; % (for Hessian approx.)
+%     opt_codeopts.regularize.delta = 4E-6; % (for Hessian approx.)
+%     opt_codeopts.regularize.epsilon2 = 1E-14; % (for Normal eqs.)
+%     opt_codeopts.regularize.delta2 = 1E-14; % (for Normal eqs.)
 
     FORCES_NLP(opt_model, opt_codeopts);
 end
@@ -214,8 +234,8 @@ function opt_ineq = eval_opt_ineq(z, p)
         lambda = z(n_x+(i-1)*n_ineq+1:n_x+i*n_ineq);
         mu = z(n_x+n_obs*n_ineq+(i-1)*n_ineq+1:n_x+n_obs*n_ineq+i*n_ineq);
         
-        opt_ineq = vertcat(opt_ineq, -dot(g, mu)+mtimes(transpose(mtimes(A,t_opt)-b),lambda));
-        opt_ineq = vertcat(opt_ineq, dot(mtimes(transpose(A), lambda), mtimes(transpose(A),lambda)));     
+        opt_ineq = vertcat(opt_ineq, -dot(g,mu)+mtimes(transpose(mtimes(A,t_opt)-b),lambda));
+        opt_ineq = vertcat(opt_ineq, dot(mtimes(transpose(A),lambda), mtimes(transpose(A),lambda)));     
     end
 
     opt_ineq = vertcat(opt_ineq, dot(hyp_w, x) - hyp_b);
