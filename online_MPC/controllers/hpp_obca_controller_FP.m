@@ -115,13 +115,13 @@ classdef hpp_obca_controller_FP
                     x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k)];
                 end
                 
-                if k == 1
-                    problem.(['z_init_',sprintf('%02d', k-1)]) = [self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k)];
-                elseif k == self.opt_params.N+1
-                    problem.(['z_init_',sprintf('%02d', k-1)]) = [self.z_ws(:,k); zeros(n_obs*n_ineq,1); zeros(n_obs*n_ineq,1)];
-                else
-                    problem.(['z_init_',sprintf('%02d', k-1)]) = [self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k)];
-                end
+                % if k == 1
+                %     problem.(['z_init_',sprintf('%02d', k-1)]) = [self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k)];
+                % elseif k == self.opt_params.N+1
+                %     problem.(['z_init_',sprintf('%02d', k-1)]) = [self.z_ws(:,k); zeros(n_obs*n_ineq,1); zeros(n_obs*n_ineq,1)];
+                % else
+                %     problem.(['z_init_',sprintf('%02d', k-1)]) = [self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k)];
+                % end
             end
             
             problem.x0 = x0;
@@ -137,11 +137,13 @@ classdef hpp_obca_controller_FP
                 	status.success = true;
                     status.return_status = 'Successfully Solved';
                     status.solve_time = info.solvetime;
+                    status.info = info;
                 else
                     fprintf('Solving Failed, exitflag = %d\n', exitflag);
                     status.success = false;
                     status.return_status = sprintf('Solving Failed, exitflag = %d', exitflag);
                     status.solve_time = nan;
+                    status.info = info;
                 end
                 
                 z_pred = zeros(n_x, self.opt_params.N+1);

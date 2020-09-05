@@ -37,7 +37,7 @@ classdef HppControlFP
 
 			for k = 1:self.model.N
 
-				if k < self.model.N-1
+				if k <= self.model.N-1
 					% z: [x, y, heading, v, delta, a, delta_prev, a_prev]
 					self.model.nvar(k) = 8;
 					
@@ -56,34 +56,16 @@ classdef HppControlFP
 					% eq: dynamics for (x, y, heading, v, delta_prev, a_prev)
 					self.model.neq(k) = 6;
 
-					self.model.E{k} = [1 0 0 0 0 0 0 0;
-									   0 1 0 0 0 0 0 0;
-									   0 0 1 0 0 0 0 0;
-									   0 0 0 1 0 0 0 0;
-									   0 0 0 0 0 0 1 0;
-									   0 0 0 0 0 0 0 1];
-
-					self.model.objective{k} = @HppControlFP.objective;
-				elseif k == self.model.N-1
-					% z: [x, y, heading, v, delta, a, delta_prev, a_prev]
-					self.model.nvar(k) = 8;
-					
-					% ineq: rate constraints and hpp
-					self.model.nh(k) = 3;
-
-					self.model.ineq{k} = @HppControlFP.ineq;
-					self.model.hu{k} = [inf, self.u_rate_lim*self.dt];
-					self.model.hl{k} = [0, -self.u_rate_lim*self.dt];
-
-					self.model.ub{k} = [inf, self.y_lim, inf, inf, ...
-										self.u_lim, ...
-										inf, inf];
-					self.model.lb{k} = -self.model.ub{k};
-
-					% eq: dynamics for (x, y, heading, v, delta_prev, a_prev)
-					self.model.neq(k) = 6;
-
-					self.model.E{k} = [eye(4); zeros(2, 4)];
+					if k < self.model.N - 1
+						self.model.E{k} = [1 0 0 0 0 0 0 0;
+										   0 1 0 0 0 0 0 0;
+										   0 0 1 0 0 0 0 0;
+										   0 0 0 1 0 0 0 0;
+										   0 0 0 0 0 0 1 0;
+										   0 0 0 0 0 0 0 1];
+					else
+						self.model.E{k} = [eye(4); zeros(2, 4)];
+					end
 
 					self.model.objective{k} = @HppControlFP.objective;
 				else
@@ -139,6 +121,8 @@ classdef HppControlFP
 					z_WS(1:2, k) = hyp(k).pos;
 
 					hyp_par(:, k) = [w(1); w(2); b];
+				else
+					hyp_par(:, k) = [1; 1; -1e3];
 				end
 			end
 
@@ -193,10 +177,12 @@ classdef HppControlFP
 
 			bike_dyn = bike_dynamics_rk4(L_r, L_f, dt, M);
 
-			x = [z(1); z(2); z(3); z(4)];
-			u = [z(5); z(6)];
+			x = z(1:4);
+			u = z(5:6);
 
-			xp1 = bike_dyn.f_dt(x, u);
+			% xp1 = bike_dyn.f_dt(x, u);
+			% Seems faster to use the RK4
+			xp1 = RK4(x, u, @bike_dyn.f_ct, dt);
 
 			zp1 = [xp1; u];
 		end
