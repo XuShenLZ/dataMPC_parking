@@ -6,6 +6,7 @@ classdef safety_controller
         u = zeros(2,1);
         d_lim = [];
         a_lim = [];
+        du_lim = [];
         
         dt = 0;
         
@@ -29,10 +30,11 @@ classdef safety_controller
     end
     
     methods
-        function obj = safety_controller(dt, d_lim, a_lim)
+        function obj = safety_controller(dt, d_lim, a_lim, du_lim)
             obj.dt = dt;
             obj.d_lim = d_lim;
             obj.a_lim = a_lim;
+            obj.du_lim = du_lim;
             
             obj.speed_PID_controller = PID(obj.speed_P, obj.speed_I, obj.speed_D, obj.dt, ...
                 obj.speed_pid_ref, obj.a_ref, obj.a_lim, obj.speed_int_lim);
@@ -64,8 +66,13 @@ classdef safety_controller
             else
                 delta = 0;
             end
-            
+
             u = [delta; a];
+
+            % Input Rate constraint
+            u = min(u, obj.du_lim*obj.dt + last_u);
+            u = max(u, -obj.du_lim*obj.dt + last_u);
+
             obj.u = u;
         end
         

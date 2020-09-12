@@ -109,9 +109,9 @@ function generate_forces_pro_opt_solver(params)
     opt_codeopts.printlevel = 2;
     opt_codeopts.optlevel = 3;
     % opt_codeopts.init = 2;
+    opt_codeopts.BuildSimulinkBlock = 0;
 
     opt_codeopts.nlp.ad_tool = 'casadi-351';
-    opt_codeopts.nlp.BuildSimulinkBlock = 0;
     opt_codeopts.nlp.linear_solver = 'symm_indefinite';
 
     codeoptions.nlp.TolStat = 1e-2;

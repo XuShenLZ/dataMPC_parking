@@ -39,9 +39,9 @@ function generate_forces_pro_ws_solver(params)
     ws_codeopts.overwrite = 1;
     ws_codeopts.printlevel = 2;
     ws_codeopts.optlevel = 3;
+    ws_codeopts.BuildSimulinkBlock = 0;
     ws_codeopts.nlp.linear_solver = 'symm_indefinite';
     ws_codeopts.nlp.ad_tool = 'casadi-351';
-    ws_codeopts.nlp.BuildSimulinkBlock = 0;
 
     FORCES_NLP(ws_model, ws_codeopts);
 end

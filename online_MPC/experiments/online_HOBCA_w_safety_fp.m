@@ -77,14 +77,14 @@ opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
 
-obca_controller = hpp_obca_controller_FP(true, ws_params, opt_params);
+obca_controller = hpp_obca_controller_FP(false, ws_params, opt_params);
 
 % Instantiate safety controller
 d_lim = [-0.35, 0.35];
 a_lim = [-1, 1];
-obca_safety_control = safety_controller(dt, d_lim, a_lim);
+du_lim = [0.3; 3];
+obca_safety_control = safety_controller(dt, d_lim, a_lim, du_lim);
 obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
-niv_safety_control = safety_controller(dt, d_lim, a_lim);
 
 % ==== Filter Setup
 V = 0.01 * eye(3);
@@ -109,6 +109,7 @@ z_refs = zeros(n_z, N+1, T-N);
 ws_stats = cell(T-N, 1);
 sol_stats = cell(T-N, 1);
 
+collide = zeros(T-N, 1);
 safety = zeros(T-N, 1);
 ebrake = zeros(T-N, 1);
 scores = zeros(3, T-N);
@@ -135,9 +136,13 @@ exp_params.filter.V = V;
 exp_params.filter.W = W;
 exp_params.filter.Pm = Pm;
 
-ws_solve_times = [];
-opt_solve_times = [];
+ws_solve_times = zeros(T-N, 1);
+opt_solve_times = zeros(T-N, 1);
+total_times = zeros(T-N, 1);
+
+%% 
 for i = 1:T-N
+    tic
     fprintf('=====================================\n')
     fprintf('Iteration: %i\n', i)
     
@@ -304,24 +309,24 @@ for i = 1:T-N
     obca_mpc_ebrake = false;
     status_ws = [];
     status_sol = [];
-    if ~obca_mpc_safety
-        [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
-        if status_ws.success
-            ws_solve_times = [ws_solve_times, status_ws.solve_time];
-            [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs, hyp);
-%             if i == 1
-%                 [status_ws, obca_controller] = obca_controller.solve_ws(z_pred, u_pred, tv_obs);
-%                 [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs, hyp);
-%             end
-        end
-        
-        if ~status_ws.success || ~status_sol.success
+
+    [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
+    if status_ws.success
+        ws_solve_times(i) = status_ws.solve_time;
+        [z_obca, u_obca, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs, hyp);
+    end
+
+    if ~status_ws.success || ~status_sol.success
+        if safety(i-1)
+            obca_mpc_safety = true;
+            fprintf('HOBCA not feasible, maintaining the safety control\n')
+        else
             % If OBCA MPC is infeasible, activate ebrake controller
             obca_mpc_ebrake = true;
             fprintf('HOBCA not feasible, activating emergency brake\n')
-        else
-            opt_solve_times = [opt_solve_times, status_sol.solve_time];
         end
+    else
+        opt_solve_times(i) = status_sol.solve_time;
     end
     
     if obca_mpc_safety
@@ -347,11 +352,16 @@ for i = 1:T-N
             z_pred(:,j+1) = EV_dynamics.f_dt(z_pred(:,j), u_pred(:,j));
         end
         fprintf('Applying ebrake control\n')
+    else
+        z_pred = z_obca;
+        u_pred = u_obca;
     end
     
     % Simulate system forward using first predicted input
     z_traj(:,i+1) = EV_dynamics.f_dt(z_traj(:,i), u_pred(:,1));
     u_traj(:,i) = u_pred(:,1);
+
+    total_times(i) = toc;
     
     % Save data
     z_preds(:,:,i) = z_pred;
@@ -359,6 +369,9 @@ for i = 1:T-N
     
     z_refs(:,:,i) = z_ref;
     hyps{i} = hyp;
+
+    % Check the collision at the current time step
+    collide(i) = check_current_collision(z_traj, EV, TV, i);
     
     safety(i) = obca_mpc_safety;
     ebrake(i) = obca_mpc_ebrake;
@@ -371,23 +384,20 @@ for i = 1:T-N
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/hobcaMPC_Exp%d_%s.mat', exp_num, datestr(now,'yyyy-mm-dd_HH-MM'));
+filename = sprintf('../data/FP_hobca_Exp%d_%s.mat', exp_num, datestr(now,'yyyy-mm-dd_HH-MM'));
 save(filename, 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', ...
-    'scores', 'strategy_idxs', 'strategy_locks', 'hyps', 'safety', 'ebrake')
+    'scores', 'strategy_idxs', 'strategy_locks', 'hyps', 'collide', 'safety', 'ebrake', ...
+    'ws_solve_times', 'opt_solve_times', 'total_times')
 
 diary off
 
 %% Plot and save movie
-clear all
-
 addpath('../constraint_generation')
 addpath('../plotting')
-
-dataname = '../data/hobcaMPC_Exp4_2020-09-03_10-48.mat';
 
 plt_params.visible = 'on'; % or 'off' to shut down real time display
 plt_params.mv_save = true;
 plt_params.mv_name = "FP_HppOBCA";
 
-F = plotExp(dataname, plt_params);
+F = plotExp(filename, plt_params);

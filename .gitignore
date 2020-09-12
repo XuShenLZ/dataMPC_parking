@@ -13,6 +13,7 @@ stdout_temp
 *dataset/
 models/
 *movies/
+datagen/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

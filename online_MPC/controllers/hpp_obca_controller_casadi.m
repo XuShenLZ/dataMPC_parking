@@ -222,13 +222,14 @@ classdef hpp_obca_controller_casadi
             try
                 tic;
                 sol_ws = self.opti_ws.solve();
-                toc;
+                solve_time = toc;
             catch
                 status = self.opti_ws.stats;
                 return;
             end
             
             status = sol_ws.stats;
+            status.solve_time = solve_time;
             
             % Set warm start value
             self.opti.set_initial(self.z, z);
@@ -245,22 +246,22 @@ classdef hpp_obca_controller_casadi
         end
         
         function [z_pred, u_pred, status, self] = solve(self, z_s, u_prev, z_ref, hyp)
-            % hyp: cell array of length N containing the hyperplane
-            % constraints for time steps 2:N+1 (disregard the first time
+            % hyp: cell array of length N+1 containing the hyperplane
+            % constraints for time steps 1:N+1 (self.hyp_ph drops the first time
             % step because of equality constraint)
             self.opti.set_value(self.z_s, z_s);
             self.opti.set_value(self.u_prev, u_prev);
             self.opti.set_value(self.z_ref, z_ref);
             
             for i = 1:self.N
-                self.opti.set_value(self.hyp_ph{i+1}.w, hyp{i}.w);
-                self.opti.set_value(self.hyp_ph{i+1}.b, hyp{i}.b);
+                self.opti.set_value(self.hyp_ph{i}.w, hyp{i+1}.w);
+                self.opti.set_value(self.hyp_ph{i}.b, hyp{i+1}.b);
             end
             
             try
                 tic;
                 sol = self.opti.solve();
-                toc;
+                solve_time = toc;
             catch
                 status = self.opti.stats;
                 z_pred = nan*ones(self.n_x, self.N+1);
@@ -269,6 +270,7 @@ classdef hpp_obca_controller_casadi
             end
             
             status = sol.stats;
+            status.solve_time = solve_time;
             z_pred = sol.value(self.z);
             u_pred = sol.value(self.u);
         end

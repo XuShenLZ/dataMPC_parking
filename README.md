@@ -12,6 +12,12 @@ Xu Shen, xu_shen@berkeley.edu
 5. Forces Pro (For fast implementation)
 
 ## Change log
+### 09/11/2020
+1. Added rate constriants to safety controller.
+2. Always solve HOBCA in every timestep. If the threshold just comes above the threshold, the HOBCA is applied only if it is feasible.
+3. Log more information: actual collision at every time step, the entire time every iteration.
+4. (**TODO**) Add a slack to HOBCA distance constriants to encourage larger distance.
+
 ### 09/04/2020
 1. Added Forces Pro for HppOBCA (Ed). But it will becomes infeasible at some time.
 2. The exitflag = -6 bug was resolved.
