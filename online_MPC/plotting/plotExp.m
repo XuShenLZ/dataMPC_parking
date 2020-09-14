@@ -21,6 +21,11 @@ function F = plotExp(dataname, plt_params)
 	EV_plt_opts.frame = true;
 	EV_plt_opts.color = 'b';
 	EV_plt_opts.alpha = 0.5;
+    
+    nEV_plt_opts.circle = false;
+	nEV_plt_opts.frame = true;
+	nEV_plt_opts.color = 'm';
+	nEV_plt_opts.alpha = 0.5;
 
 	TV_plt_opts.circle = false;
 	TV_plt_opts.color = 'y';
@@ -29,6 +34,7 @@ function F = plotExp(dataname, plt_params)
 
 	p_EV = []; l_EV = [];
 	p_OEV = []; l_OEV = [];
+    p_nEV = []; l_nEV = [];
 	p_TV = []; l_TV = [];
 	t_EV_ref = [];
 	t_Y = [];
@@ -84,6 +90,7 @@ function F = plotExp(dataname, plt_params)
 	ax_h_s = axes('Position',[0.5 0.05 0.45 0.2]);
 	h_s_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2);
 	h_e_l = animatedline(ax_h_s, 'color', '#D95319', 'linewidth', 2, 'linestyle', '--');
+    n_e_l = animatedline(ax_h_s, 'color', 'm', 'linewidth', 2, 'linestyle', '--');
 	legend('Safety', 'E-Brake')
 	ylabel('safety')
 	axis([1 T-N 0 1])
@@ -111,9 +118,13 @@ function F = plotExp(dataname, plt_params)
 	    addpoints(h_a_l, i, u_traj(2,i));
 	    addpoints(h_s_l, i, double(safety(i)));
 	    addpoints(h_e_l, i, double(ebrake(i)));
+        addpoints(n_e_l, i, double(ebrake_n(i)));
 
 	    % Delete lines and patches from last iteration
 	    delete(p_EV); delete(l_EV); delete(p_OEV); delete(l_OEV); 
+        if exist('zn_traj', 'var')
+            delete(p_nEV); delete(l_nEV);
+        end
 	    delete(p_TV); delete(l_TV); 
 	    delete(t_EV_ref); delete(t_Y); delete(t_h_feas); delete(t_h_safe);
 	    
@@ -148,7 +159,10 @@ function F = plotExp(dataname, plt_params)
 
 	    [p_OEV, l_OEV] = plotCar(OEV.traj(1,i), OEV.traj(2,i), OEV.traj(3,i), OEV.width, OEV.length, OEV_plt_opts);
 	    [p_EV, l_EV] = plotCar(z_traj(1,i), z_traj(2,i), z_traj(3,i), OEV.width, OEV.length, EV_plt_opts);
-	    
+	    if exist('zn_traj', 'var')
+            [p_nEV, l_nEV] = plotCar(zn_traj(1,i), zn_traj(2,i), zn_traj(3,i), OEV.width, OEV.length, nEV_plt_opts);
+        end
+        
 	    p_TV = [];
 	    l_TV = [];
 	    for j = 1:N+1
@@ -164,19 +178,19 @@ function F = plotExp(dataname, plt_params)
 	        p_TV = [p_TV, p];
 	        l_TV = [l_TV, l];
 	        
-	        if ~isnan(hyp{j}.pos)
-	            coll_bound_global = rot(TV.heading(i+j-1))*[coll_bound_x; coll_bound_y] + [TV.x(i+j-1); TV.y(i+j-1)];
-	            l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
-	            if hyp{j}.w(2) == 0
-	                hyp_x = [hyp{j}.b, hyp{j}.b];
-	                hyp_y = [map_dim(3), map_dim(4)];
-	            else
-	                hyp_x = [map_dim(1), map_dim(2)];
-	                hyp_y = (-hyp{j}.w(1)*hyp_x+hyp{j}.b)/hyp{j}.w(2);
-	            end
-	            l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
-	            l_TV = [l_TV plot([z_ref(1,j) hyp{j}.pos(1)], [z_ref(2,j) hyp{j}.pos(2)], '-o', 'color', cmap(j,:))];
-	        end
+% 	        if ~isnan(hyp{j}.pos)
+% 	            coll_bound_global = rot(TV.heading(i+j-1))*[coll_bound_x; coll_bound_y] + [TV.x(i+j-1); TV.y(i+j-1)];
+% 	            l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
+% 	            if hyp{j}.w(2) == 0
+% 	                hyp_x = [hyp{j}.b, hyp{j}.b];
+% 	                hyp_y = [map_dim(3), map_dim(4)];
+% 	            else
+% 	                hyp_x = [map_dim(1), map_dim(2)];
+% 	                hyp_y = (-hyp{j}.w(1)*hyp_x+hyp{j}.b)/hyp{j}.w(2);
+% 	            end
+% 	            l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
+% 	            l_TV = [l_TV plot([z_ref(1,j) hyp{j}.pos(1)], [z_ref(2,j) hyp{j}.pos(2)], '-o', 'color', cmap(j,:))];
+% 	        end
 	        l_TV = [l_TV plot(z_ref(1,j), z_ref(2,j), 'o', 'color', cmap(j,:))];
 	        if ~safety(i)
 	            l_TV = [l_TV plot(z_pred(1,j), z_pred(2,j), 'd', 'color', cmap(j,:))];
