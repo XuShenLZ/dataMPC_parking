@@ -21,7 +21,7 @@ if ~isfolder('../data/')
 end
 
 time = datestr(now,'yyyy-mm-dd_HH-MM');
-diary(sprintf('../data/casadi_NaiveOBCA_Exp%d_%s.txt', exp_num, time))
+diary(sprintf('../data/yalmip_NaiveOBCA_Exp%d_%s.txt', exp_num, time))
 
 %%
 N = 20; % Prediction horizon
@@ -49,7 +49,7 @@ u_l = [-0.35; -1];
 du_u = [0.3; 3];
 du_l = [-0.3; -3];
 
-opt_params.name = 'casadi_solver_naive';
+opt_params.name = 'yalmip_solver_naive';
 opt_params.N = N;
 opt_params.n_x = n_z;
 opt_params.n_u = n_u;
@@ -68,7 +68,7 @@ opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
 
-obca_controller = obca_controller_casadi(opt_params);
+obca_controller = obca_controller_yalmip(opt_params);
 
 % Instantiate safety controller
 d_lim = [-0.35, 0.35];
@@ -173,7 +173,7 @@ for i = 1:T-N
     [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
     if status_ws.success
         ws_solve_times(i) = status_ws.solve_time;
-        [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref);
+        [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs);
     end
     
     if ~status_ws.success || ~status_sol.success
@@ -217,7 +217,7 @@ for i = 1:T-N
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/casadi_NaiveOBCA_Exp%d_%s.mat', exp_num, time);
+filename = sprintf('../data/yalmip_NaiveOBCA_Exp%d_%s.mat', exp_num, time);
 save(filename, 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'ebrake', ...
     'ws_solve_times', 'opt_solve_times', 'total_times')

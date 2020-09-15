@@ -4,8 +4,14 @@ classdef hpp_obca_controller_casadi
         Q;
         R;
         
-        n_x = 4;
-        n_u = 2;
+        u_u;
+        u_l;
+        du_u;
+        du_l;
+        dt;
+        
+        n_x;
+        n_u;
         n_obs;
         n_ineq;
         d_ineq;
@@ -39,20 +45,27 @@ classdef hpp_obca_controller_casadi
     end
     
     methods
-        function self = hpp_obca_controller_casadi(N, Q, R, dynamics, EV_G, EV_g, d_min, n_obs, n_ineq, d_ineq)
+        function self = hpp_obca_controller_casadi(params)
             % EV_G, EV_g: polytope description of ego vehicle
             % n_ineq: number of inequalities for obstacle description
             % d_ineq: dimension of inequalities for obstacle description
-            self.N = N;
-            self.Q = Q;
-            self.R = R;
-            self.dynamics = dynamics;
-            self.n_obs = n_obs;
-            self.n_ineq = n_ineq;
-            self.d_ineq = d_ineq;
-            self.EV_G = EV_G;
-            self.EV_g = EV_g;
-            self.d_min = d_min;
+            self.N = params.N;
+            self.Q = params.Q;
+            self.R = params.R;
+            self.dynamics = params.dynamics;
+            self.n_obs = params.n_obs;
+            self.n_ineq = params.n_ineq;
+            self.d_ineq = params.d_ineq;
+            self.EV_G = params.G;
+            self.EV_g = params.g;
+            self.d_min = params.d_min;
+            self.n_x = params.n_x;
+            self.n_u = params.n_u;
+            self.u_u = params.u_u;
+            self.u_l = params.u_l;
+            self.du_u = params.du_u;
+            self.du_l = params.du_l;
+            self.dt = params.dt;
             
             import casadi.*
             
@@ -60,44 +73,44 @@ classdef hpp_obca_controller_casadi
             self.opti_ws = casadi.Opti();
             
             % Dual variables for obstacles
-            self.lambda_ws = cell(n_obs, 1);
-            self.mu_ws = cell(n_obs, 1);
-            self.d_ws = cell(n_obs, 1);
+            self.lambda_ws = cell(self.n_obs, 1);
+            self.mu_ws = cell(self.n_obs, 1);
+            self.d_ws = cell(self.n_obs, 1);
             
-            for i = 1:n_obs
+            for i = 1:self.n_obs
                 % Set up warm start dual variables for each obstacle
-                self.lambda_ws{i} = self.opti_ws.variable(n_ineq, N);
-                self.mu_ws{i} = self.opti_ws.variable(n_ineq, N);
-                self.d_ws{i} = self.opti_ws.variable(1, N);
+                self.lambda_ws{i} = self.opti_ws.variable(self.n_ineq, self.N);
+                self.mu_ws{i} = self.opti_ws.variable(self.n_ineq, self.N);
+                self.d_ws{i} = self.opti_ws.variable(1, self.N);
                 
                 % (:) vectorizes the variable
                 self.opti_ws.subject_to(self.lambda_ws{i}(:) >= 0);
                 self.opti_ws.subject_to(self.mu_ws{i}(:) >= 0);
             end
 
-            self.z_ws_ph = self.opti_ws.parameter(self.n_x, N+1);
-            self.u_ws_ph = self.opti_ws.parameter(self.n_u, N);
-            self.obs_ws_ph = cell(n_obs, N);
+            self.z_ws_ph = self.opti_ws.parameter(self.n_x, self.N+1);
+            self.u_ws_ph = self.opti_ws.parameter(self.n_u, self.N);
+            self.obs_ws_ph = cell(self.n_obs, self.N);
 
             self.obj_ws = 0;
             
             % Solves a feasibility problem given the previous trajectory
             % prediction to obtain warm start values for the dual variables
-            for k = 1:N
+            for k = 1:self.N
                 t_ws = self.z_ws_ph(1:2,k+1);
                 R_ws = [cos(self.z_ws_ph(3,k+1)), -sin(self.z_ws_ph(3,k+1)); 
                     sin(self.z_ws_ph(3,k+1)), cos(self.z_ws_ph(3,k+1))];
                 
-                for i = 1:n_obs
+                for i = 1:self.n_obs
                     % Set up placeholder variables for obstacle description
                     % (polytopes)
-                    self.obs_ws_ph{i,k}.A = self.opti_ws.parameter(n_ineq, d_ineq);
-                    self.obs_ws_ph{i,k}.b = self.opti_ws.parameter(n_ineq);
+                    self.obs_ws_ph{i,k}.A = self.opti_ws.parameter(self.n_ineq, self.d_ineq);
+                    self.obs_ws_ph{i,k}.b = self.opti_ws.parameter(self.n_ineq);
 
-                    self.opti_ws.subject_to(-dot(EV_g, self.mu_ws{i}(:,k)) + ...
+                    self.opti_ws.subject_to(-dot(self.EV_g, self.mu_ws{i}(:,k)) + ...
                         dot(mtimes(self.obs_ws_ph{i,k}.A, t_ws)-self.obs_ws_ph{i,k}.b, self.lambda_ws{i}(:,k)) == self.d_ws{i}(k));
-                    self.opti_ws.subject_to(mtimes(EV_G', self.mu_ws{i}(:,k)) + ...
-                        mtimes(transpose(mtimes(self.obs_ws_ph{i,k}.A, R_ws)), self.lambda_ws{i}(:,k)) == zeros(d_ineq, 1));
+                    self.opti_ws.subject_to(mtimes(self.EV_G', self.mu_ws{i}(:,k)) + ...
+                        mtimes(transpose(mtimes(self.obs_ws_ph{i,k}.A, R_ws)), self.lambda_ws{i}(:,k)) == zeros(self.d_ineq, 1));
                     self.opti_ws.subject_to(dot(mtimes(transpose(self.obs_ws_ph{i,k}.A), self.lambda_ws{i}(:,k)), mtimes(transpose(self.obs_ws_ph{i,k}.A), self.lambda_ws{i}(:,k))) <= 1);
                     
                     self.obj_ws = self.obj_ws - self.d_ws{i}(k);
@@ -117,49 +130,49 @@ classdef hpp_obca_controller_casadi
             % ========== Setup dynamics ==========
             z_k = MX.sym('z_k', self.n_x);
             u_k = MX.sym('u_k', self.n_u);
-            z_kp1 = dynamics.f_dt(z_k, u_k);
+            z_kp1 = self.dynamics.f_dt(z_k, u_k);
             f_dyn_dt = Function('dt_dynamics', {z_k, u_k}, {z_kp1}, {'z_k', 'u_k'}, {'z_kp1'});
             
             % ========== Build OBCA optimizer ==========
             self.opti = casadi.Opti();
             
             % Dual variables for obstacles
-            self.lambda = cell(n_obs, 1);
-            self.mu = cell(n_obs, 1);
+            self.lambda = cell(self.n_obs, 1);
+            self.mu = cell(self.n_obs, 1);
             
-            for i = 1:n_obs
+            for i = 1:self.n_obs
                 % Set up dual variables for each obstacle
-                self.lambda{i} = self.opti.variable(n_ineq, N);
-                self.mu{i} = self.opti.variable(n_ineq, N);
+                self.lambda{i} = self.opti.variable(self.n_ineq, self.N);
+                self.mu{i} = self.opti.variable(self.n_ineq, self.N);
                 
                 % Positivity constraints on dual variables (:) vectorizes the variable
                 self.opti.subject_to(self.lambda{i}(:) >= 0);
                 self.opti.subject_to(self.mu{i}(:) >= 0);
             end
             
-            self.z = self.opti.variable(self.n_x, N+1);
-            self.u = self.opti.variable(self.n_u, N);
-            self.z_ref = self.opti.parameter(self.n_x, N+1);
+            self.z = self.opti.variable(self.n_x, self.N+1);
+            self.u = self.opti.variable(self.n_u, self.N);
+            self.z_ref = self.opti.parameter(self.n_x, self.N+1);
             self.z_s = self.opti.parameter(self.n_x);
             self.u_prev = self.opti.parameter(self.n_u);
-            self.obs_ph = cell(n_obs, N);
-            self.hyp_ph = cell(1, N);
+            self.obs_ph = cell(self.n_obs, self.N);
+            self.hyp_ph = cell(1, self.N);
 
             self.obj = 0;
             
             % Initial condition
             self.opti.subject_to(self.z(:,1) == self.z_s);
             % Input rate constraint
-            self.opti.subject_to([-0.3; -3]*dynamics.dt <= self.u(:,1)-self.u_prev <= [0.3; 3]*dynamics.dt);
+            self.opti.subject_to(self.du_l*self.dt <= self.u(:,1)-self.u_prev <= self.du_u*self.dt);
             
-            for k = 1:N
+            for k = 1:self.N
                 % Dynamics constraints
                 self.opti.subject_to(self.z(:,k+1) == f_dyn_dt(self.z(:,k), self.u(:,k)));
                 
                 % Input constraints
-                self.opti.subject_to([-0.35; -1] <= self.u(:,k) <= [0.35; 1]);
-                if k < N
-                    self.opti.subject_to([-0.3; -3]*dynamics.dt <= self.u(:,k+1)-self.u(:,k) <= [0.3; 3]*dynamics.dt);
+                self.opti.subject_to(self.u_l <= self.u(:,k) <= self.u_u);
+                if k < self.N
+                    self.opti.subject_to(self.du_l*self.dt <= self.u(:,k+1)-self.u(:,k) <= self.du_u*self.dt);
                 end
 
                 t_opt = self.z(1:2,k+1);
@@ -167,16 +180,16 @@ classdef hpp_obca_controller_casadi
                     sin(self.z(3,k+1)), cos(self.z(3,k+1))];
                 
                 % Obstacle avoidance constraints
-                for i = 1:n_obs
+                for i = 1:self.n_obs
                     % Set up placeholder variables for obstacle description
                     % (polytopes)
-                    self.obs_ph{i,k}.A = self.opti.parameter(n_ineq, d_ineq);
-                    self.obs_ph{i,k}.b = self.opti.parameter(n_ineq);
+                    self.obs_ph{i,k}.A = self.opti.parameter(self.n_ineq, self.d_ineq);
+                    self.obs_ph{i,k}.b = self.opti.parameter(self.n_ineq);
 
-                    self.opti.subject_to(-dot(EV_g, self.mu{i}(:,k)) + ...
-                        mtimes(transpose(mtimes(self.obs_ph{i,k}.A, t_opt)-self.obs_ph{i,k}.b), self.lambda{i}(:,k)) >= d_min);
-                    self.opti.subject_to(mtimes(EV_G', self.mu{i}(:,k)) + ...
-                        mtimes(transpose(mtimes(self.obs_ph{i,k}.A, R_opt)), self.lambda{i}(:,k)) == zeros(d_ineq, 1));
+                    self.opti.subject_to(-dot(self.EV_g, self.mu{i}(:,k)) + ...
+                        mtimes(transpose(mtimes(self.obs_ph{i,k}.A, t_opt)-self.obs_ph{i,k}.b), self.lambda{i}(:,k)) >= self.d_min);
+                    self.opti.subject_to(mtimes(self.EV_G', self.mu{i}(:,k)) + ...
+                        mtimes(transpose(mtimes(self.obs_ph{i,k}.A, R_opt)), self.lambda{i}(:,k)) == zeros(self.d_ineq, 1));
                     self.opti.subject_to(dot(mtimes(transpose(self.obs_ph{i,k}.A), self.lambda{i}(:,k)), mtimes(transpose(self.obs_ph{i,k}.A), self.lambda{i}(:,k))) <= 1);
                 end
                 
@@ -186,8 +199,8 @@ classdef hpp_obca_controller_casadi
                 self.opti.subject_to(dot(self.hyp_ph{k}.w, self.z(:,k+1)) >= self.hyp_ph{k}.b);
                 
                 % Tracking and input cost
-                self.obj = self.obj + bilin(Q, self.z(:,k+1)-self.z_ref(:,k+1), self.z(:,k+1)-self.z_ref(:,k+1)) + ...
-                    bilin(R, self.u(:,k), self.u(:,k));
+                self.obj = self.obj + bilin(self.Q, self.z(:,k+1)-self.z_ref(:,k+1), self.z(:,k+1)-self.z_ref(:,k+1)) + ...
+                    bilin(self.R, self.u(:,k), self.u(:,k));
             end
             
             self.opti.minimize(self.obj);
@@ -214,8 +227,8 @@ classdef hpp_obca_controller_casadi
             
             for i = 1:self.n_obs
                 for k = 1:self.N
-                    self.opti_ws.set_value(self.obs_ws_ph{i,k}.A, obs{i,k}.A);
-                    self.opti_ws.set_value(self.obs_ws_ph{i,k}.b, obs{i,k}.b);
+                    self.opti_ws.set_value(self.obs_ws_ph{i,k}.A, obs{i,k+1}.A);
+                    self.opti_ws.set_value(self.obs_ws_ph{i,k}.b, obs{i,k+1}.b);
                 end
             end
             
@@ -239,8 +252,8 @@ classdef hpp_obca_controller_casadi
                 self.opti.set_initial(self.mu{i}, sol_ws.value(self.mu_ws{i}));
                 
                 for k = 1:self.N
-                    self.opti.set_value(self.obs_ph{i,k}.A, obs{i,k}.A);
-                    self.opti.set_value(self.obs_ph{i,k}.b, obs{i,k}.b);
+                    self.opti.set_value(self.obs_ph{i,k}.A, obs{i,k+1}.A);
+                    self.opti.set_value(self.obs_ph{i,k}.b, obs{i,k+1}.b);
                 end
             end
         end
@@ -253,9 +266,9 @@ classdef hpp_obca_controller_casadi
             self.opti.set_value(self.u_prev, u_prev);
             self.opti.set_value(self.z_ref, z_ref);
             
-            for i = 1:self.N
-                self.opti.set_value(self.hyp_ph{i}.w, hyp{i+1}.w);
-                self.opti.set_value(self.hyp_ph{i}.b, hyp{i+1}.b);
+            for k = 1:self.N
+                self.opti.set_value(self.hyp_ph{k}.w, hyp{k+1}.w);
+                self.opti.set_value(self.hyp_ph{k}.b, hyp{k+1}.b);
             end
             
             try

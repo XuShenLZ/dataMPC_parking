@@ -20,7 +20,7 @@ if ~isfolder('../data/')
     mkdir('../data')
 end
 
-diary(sprintf('../data/Cas_HppOBCA_Exp%d_%s', exp_num, datestr(now,'yyyy-mm-dd_HH-MM')))
+diary(sprintf('../data/casadi_HppOBCA_Exp%d_%s', exp_num, datestr(now,'yyyy-mm-dd_HH-MM')))
 
 %%
 N = 20; % Prediction horizon
@@ -43,7 +43,31 @@ EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 Q = diag([0.05 0.1 0.1 0.5]);
 R = diag([0.01 0.01]);
 d_min = 0.001;
-obca_controller = hpp_obca_controller_casadi(N, Q, R, EV_dynamics, EV.G, EV.g, d_min, 1, 4, 2);
+u_u = [0.35; 1];
+u_l = [-0.35; -1];
+du_u = [0.3; 3];
+du_l = [-0.3; -3];
+
+opt_params.name = 'casadi_opt_solver_strat';
+opt_params.N = N;
+opt_params.n_x = n_z;
+opt_params.n_u = n_u;
+opt_params.n_obs = 1;
+opt_params.n_ineq = 4;
+opt_params.d_ineq = 2;
+opt_params.G = EV.G;
+opt_params.g = EV.g;
+opt_params.d_min = d_min;
+opt_params.Q = Q;
+opt_params.R = R;
+opt_params.u_u = u_u;
+opt_params.u_l = u_l;
+opt_params.du_u = du_u;
+opt_params.du_l = du_l;
+opt_params.dynamics = EV_dynamics;
+opt_params.dt = dt;
+
+obca_controller = hpp_obca_controller_casadi(opt_params);
 
 % Instantiate safety controller
 d_lim = [-0.35, 0.35];
@@ -238,7 +262,7 @@ for i = 1:T-N
     end
     
     % Generate target vehicle obstacle descriptions
-    tv_obs = get_car_poly_obs(TV_pred(:,2:end), TV.width, TV.length);
+    tv_obs = get_car_poly_obs(TV_pred, TV.width, TV.length);
     
     if ~obca_mpc_safety && yield
         % Compute the distance threshold for applying braking assuming max
@@ -347,20 +371,10 @@ for i = 1:T-N
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/Cas_hobca_Exp%d_%s.mat', exp_num, datestr(now,'yyyy-mm-dd_HH-MM'));
+filename = sprintf('../data/casadi_HppOBCA_Exp%d_%s.mat', exp_num, datestr(now,'yyyy-mm-dd_HH-MM'));
 save(filename, 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', ...
     'scores', 'strategy_idxs', 'strategy_locks', 'hyps', 'collide', 'safety', 'ebrake', ...
     'ws_solve_times', 'opt_solve_times', 'total_times')
 
 diary off
-
-%% Plot and save movie
-addpath('../constraint_generation')
-addpath('../plotting')
-
-plt_params.visible = 'on'; % or 'off' to shut down real time display
-plt_params.mv_save = true;
-plt_params.mv_name = "CAS_HppOBCA";
-
-F = plotExp(filename, plt_params);
