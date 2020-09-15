@@ -20,9 +20,10 @@ if ~isfolder('../data/')
     mkdir('../data')
 end
 
-diary(sprintf('../data/FP_HppOBCA_Exp%d_%s', exp_num, datestr(now,'yyyy-mm-dd_HH-MM')))
+time = datestr(now,'yyyy-mm-dd_HH-MM');
+diary(sprintf('../data/FP_StratOBCA_Exp%d_%s.txt', exp_num, time))
 
-%%
+%% Experiment parameters
 N = 20; % Prediction horizon
 dt = EV.dt; % Time step
 T = length(TV.t); % Length of data
@@ -48,7 +49,7 @@ u_l = [-0.35; -1];
 du_u = [0.3; 3];
 du_l = [-0.3; -3];
 
-ws_params.name = 'FP_ws_solver';
+ws_params.name = 'FP_ws_solver_strat';
 ws_params.N = N;
 ws_params.n_x = n_z;
 ws_params.n_u = n_u;
@@ -58,7 +59,7 @@ ws_params.d_ineq = 2;
 ws_params.G = EV.G;
 ws_params.g = EV.g;
 
-opt_params.name = 'FP_opt_solver';
+opt_params.name = 'FP_opt_solver_strat';
 opt_params.N = N;
 opt_params.n_x = n_z;
 opt_params.n_u = n_u;
@@ -77,37 +78,7 @@ opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
 
-wsn_params.name = 'FP_wsn_solver';
-wsn_params.N = N;
-wsn_params.n_x = n_z;
-wsn_params.n_u = n_u;
-wsn_params.n_obs = 1;
-wsn_params.n_ineq = 4;
-wsn_params.d_ineq = 2;
-wsn_params.G = EV.G;
-wsn_params.g = EV.g;
-
-optn_params.name = 'FP_optn_solver';
-optn_params.N = N;
-optn_params.n_x = n_z;
-optn_params.n_u = n_u;
-optn_params.n_obs = 1;
-optn_params.n_ineq = 4;
-optn_params.d_ineq = 2;
-optn_params.G = EV.G;
-optn_params.g = EV.g;
-optn_params.d_min = d_min;
-optn_params.Q = Q;
-optn_params.R = R;
-optn_params.u_u = u_u;
-optn_params.u_l = u_l;
-optn_params.du_u = du_u;
-optn_params.du_l = du_l;
-optn_params.dynamics = EV_dynamics;
-optn_params.dt = dt;
-
 obca_controller = hpp_obca_controller_FP(true, ws_params, opt_params);
-nobca_controller = obca_controller_FP(true, wsn_params, optn_params);
 
 % Instantiate safety controller
 d_lim = [-0.35, 0.35];
@@ -132,23 +103,12 @@ z_traj = zeros(n_z, T-N+1);
 z_traj(:,1) = EV.traj(:,1);
 u_traj = zeros(n_u, T-N);
 
-zn_traj = zeros(n_z, T-N+1);
-zn_traj(:,1) = EV.traj(:,1);
-un_traj = zeros(n_u, T-N);
-
 z_preds = zeros(n_z, N+1, T-N);
 u_preds = zeros(n_u, N, T-N);
 z_refs = zeros(n_z, N+1, T-N);
 
-zn_preds = zeros(n_z, N+1, T-N);
-un_preds = zeros(n_u, N, T-N);
-zn_refs = zeros(n_z, N+1, T-N);
-
 ws_stats = cell(T-N, 1);
 sol_stats = cell(T-N, 1);
-
-wsn_stats = cell(T-N, 1);
-soln_stats = cell(T-N, 1);
 
 collide = zeros(T-N, 1);
 safety = zeros(T-N, 1);
@@ -157,9 +117,6 @@ scores = zeros(3, T-N);
 strategy_idxs = zeros(T-N);
 strategy_locks = zeros(T-N);
 hyps = cell(T-N, 1);
-
-collide_n = zeros(T-N, 1);
-ebrake_n = zeros(T-N, 1);
 
 exp_params.exp_num = exp_num;
 exp_params.T = T;
@@ -182,15 +139,13 @@ exp_params.filter.Pm = Pm;
 
 ws_solve_times = zeros(T-N, 1);
 opt_solve_times = zeros(T-N, 1);
-wsn_solve_times = zeros(T-N, 1);
-optn_solve_times = zeros(T-N, 1);
+
 total_times = zeros(T-N, 1);
 
 %% 
 for i = 1:T-N
     tic
-    fprintf('=====================================\n')
-    fprintf('Iteration: %i\n', i)
+    fprintf('\n=================== Iteration: %i ==================\n', i)
     
     % Get x, y, heading, and velocity from ego vehicle at current timestep
     EV_x  = z_traj(1,i);
@@ -262,8 +217,6 @@ for i = 1:T-N
     EV_y_ref = zeros(1, length(EV_x_ref));
     EV_h_ref = zeros(1, length(EV_x_ref));
     z_ref = [EV_x_ref; EV_y_ref; EV_h_ref; EV_v_ref];
-    
-    zn_ref = [zn_traj(1,i)+[0:N]*dt*v_ref; zeros(1,N+1); zeros(1,N+1); v_ref*ones(1,N+1)]; 
     
     % Check which points along the reference trajectory would result in
     % collision. Collision is defined as the reference point at step k 
@@ -348,19 +301,13 @@ for i = 1:T-N
         z_ws = z_ref;
         u_ws = zeros(n_u, N);
         u_prev = zeros(n_u, 1);
-        
-        zn_ws = zn_ref;
-        un_ws = zeros(n_u, N);
-        un_prev = zeros(n_u, 1);
     else
         z_ws = z_preds(:,:,i-1);
         u_ws = u_preds(:,:,i-1);
         u_prev = u_traj(:,i-1);
-        
-        zn_ws = zn_preds(:,:,i-1);
-        un_ws = un_preds(:,:,i-1);
-        un_prev = un_traj(:,i-1);
     end
+    
+    fprintf('------- Solving Strategy OBCA -------\n')
     
     obca_mpc_ebrake = false;
     status_sol = [];
@@ -412,43 +359,9 @@ for i = 1:T-N
         u_pred = u_obca;
     end
     
-    % Naive controller
-    nobca_mpc_ebrake = false;
-    status_soln = [];
-    [status_wsn, nobca_controller] = nobca_controller.solve_ws(zn_ws, un_ws, tv_obs);
-    if status_wsn.success
-        wsn_solve_times(i) = status_wsn.solve_time;
-        [zn_pred, un_pred, status_soln, nobca_controller] = nobca_controller.solve(zn_traj(:,i), un_prev, zn_ref, tv_obs);
-    end
-    
-    if ~status_wsn.success || ~status_soln.success
-        % If OBCA MPC is infeasible, activate ebrake controller
-        nobca_mpc_ebrake = true;
-        fprintf('Naive HOBCA not feasible, activating emergency brake\n')
-    else
-        optn_solve_times(i) = status_soln.solve_time;
-    end
-    
-    if nobca_mpc_ebrake
-        [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(zn_traj(:,i), TV_pred, un_prev);
-        % Assume ebrake control is applied for one time step then no
-        % control action is applied for rest of horizon
-        un_pred = [u_ebrake zeros(n_u, N-1)];
-        zn_pred = [zn_traj(:,i) zeros(n_z, N)];
-        % Simulate this policy
-        for j = 1:N
-            zn_pred(:,j+1) = EV_dynamics.f_dt(zn_pred(:,j), un_pred(:,j));
-        end
-        fprintf('Applying ebrake control to naive\n')
-    end
-    
     % Simulate system forward using first predicted input
     z_traj(:,i+1) = EV_dynamics.f_dt(z_traj(:,i), u_pred(:,1));
     u_traj(:,i) = u_pred(:,1);
-    
-    % Simulate system forward using first predicted input
-    zn_traj(:,i+1) = EV_dynamics.f_dt(zn_traj(:,i), un_pred(:,1));
-    un_traj(:,i) = un_pred(:,1);
 
     total_times(i) = toc;
     
@@ -458,19 +371,12 @@ for i = 1:T-N
     
     z_refs(:,:,i) = z_ref;
     hyps{i} = hyp;
-    
-    % Save data
-    zn_preds(:,:,i) = zn_pred;
-    un_preds(:,:,i) = un_pred;
-    zn_refs(:,:,i) = zn_ref;
 
     % Check the collision at the current time step
     collide(i) = check_current_collision(z_traj, EV, TV, i);
-    collide_n(i) = check_current_collision(zn_traj, EV, TV, i);
     
     safety(i) = obca_mpc_safety;
     ebrake(i) = obca_mpc_ebrake;
-    ebrake_n(i) = nobca_mpc_ebrake;
     
     scores(:,i) = score;
     strategy_idxs(i) = strategy_idx;
@@ -478,28 +384,12 @@ for i = 1:T-N
     
     ws_stats{i} = status_ws;
     sol_stats{i} = status_sol;
-    
-    wsn_stats{i} = status_wsn;
-    soln_stats{i} = status_soln;
 end
 
-filename = sprintf('../data/FP_hobca_Exp%d_%s.mat', exp_num, datestr(now,'yyyy-mm-dd_HH-MM'));
+filename = sprintf('../data/FP_StratOBCA_Exp%d_%s.mat', exp_num, time);
 save(filename, 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'safety', 'ebrake', ...
-    'zn_traj', 'un_traj', 'zn_preds', 'un_preds', 'zn_refs', 'wsn_stats', 'soln_stats', 'collide_n', 'ebrake_n', ...
     'scores', 'strategy_idxs', 'strategy_locks', 'hyps', ...
-    'ws_solve_times', 'opt_solve_times', 'total_times', ...
-    'wsn_solve_times', 'optn_solve_times')
+    'ws_solve_times', 'opt_solve_times', 'total_times')
 
 diary off
-
-%% Plot and save movie
-addpath('../constraint_generation')
-addpath('../plotting')
-
-fname = '../data/FP_hobca_Exp1_2020-09-13_20-31.mat';
-plt_params.visible = 'on'; % or 'off' to shut down real time display
-plt_params.mv_save = true;
-plt_params.mv_name = "FP_HppOBCA";
-
-F = plotExp(fname, plt_params);

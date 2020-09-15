@@ -1,6 +1,5 @@
 %% plotExp: plot the experiment process
 function F = plotExp(dataname, plt_params)
-
 	load(dataname)
 
 	map_dim = [-30 30 -10 10];
@@ -21,11 +20,6 @@ function F = plotExp(dataname, plt_params)
 	EV_plt_opts.frame = true;
 	EV_plt_opts.color = 'b';
 	EV_plt_opts.alpha = 0.5;
-    
-    nEV_plt_opts.circle = false;
-	nEV_plt_opts.frame = true;
-	nEV_plt_opts.color = 'm';
-	nEV_plt_opts.alpha = 0.5;
 
 	TV_plt_opts.circle = false;
 	TV_plt_opts.color = 'y';
@@ -34,7 +28,6 @@ function F = plotExp(dataname, plt_params)
 
 	p_EV = []; l_EV = [];
 	p_OEV = []; l_OEV = [];
-    p_nEV = []; l_nEV = [];
 	p_TV = []; l_TV = [];
 	t_EV_ref = [];
 	t_Y = [];
@@ -90,82 +83,91 @@ function F = plotExp(dataname, plt_params)
 	ax_h_s = axes('Position',[0.5 0.05 0.45 0.2]);
 	h_s_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2);
 	h_e_l = animatedline(ax_h_s, 'color', '#D95319', 'linewidth', 2, 'linestyle', '--');
-    n_e_l = animatedline(ax_h_s, 'color', 'm', 'linewidth', 2, 'linestyle', '--');
 	legend('Safety', 'E-Brake')
 	ylabel('safety')
 	axis([1 T-N 0 1])
 
-	for i = 1:T-N
+    for i = 1:T-N
 	    status_ws = ws_stats{i};
 	    status_sol = sol_stats{i};
-	    hyp = hyps{i};
+	    
 	    z_ref = z_refs(:,:,i);
 	    z_pred = z_preds(:,:,i);
 	    u_pred = u_preds(:,:,i);
-	    score = scores(:,i);
 	    
-	    if z_traj(1,i) > map_dim(2)
+        if z_traj(1,i) > map_dim(2)
 	        F(i:end) = [];
-	        break
-	    end
+	        break;
+        end
 	    
-	    addpoints(L_line, i, score(1));
-	    addpoints(R_line, i, score(2));
-	    addpoints(Y_line, i, score(3));
+        if exist('scores', 'var')
+            score = scores(:,i);
+            addpoints(L_line, i, score(1));
+            addpoints(R_line, i, score(2));
+            addpoints(Y_line, i, score(3));
+        end
 	    
 	    addpoints(h_v_l, i, z_traj(4,i));
 	    addpoints(h_d_l, i, u_traj(1,i));
 	    addpoints(h_a_l, i, u_traj(2,i));
-	    addpoints(h_s_l, i, double(safety(i)));
 	    addpoints(h_e_l, i, double(ebrake(i)));
-        addpoints(n_e_l, i, double(ebrake_n(i)));
 
 	    % Delete lines and patches from last iteration
 	    delete(p_EV); delete(l_EV); delete(p_OEV); delete(l_OEV); 
-        if exist('zn_traj', 'var')
-            delete(p_nEV); delete(l_nEV);
-        end
 	    delete(p_TV); delete(l_TV); 
 	    delete(t_EV_ref); delete(t_Y); delete(t_h_feas); delete(t_h_safe);
 	    
 	    % Plot
 	    axes(ax1);
-	    t_Y = text(-29, 9, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idxs(i)), strategy_locks(i)), 'color', 'k');
-	    hold on
-	    
-	    if safety(i)
-	        s_h = 'ON';
-	    else
-	        s_h = 'OFF';
-	    end
-	    if ebrake(i)
+        if exist('strategy_idxs', 'var')
+            t_Y = text(-29, 9, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idxs(i)), strategy_locks(i)), 'color', 'k');
+            hold on
+        end
+        
+        if exist('safety', 'var')
+            addpoints(h_s_l, i, double(safety(i)));
+            if safety(i)
+                s_h = 'ON';
+                ws_stat = 'n/a';
+                sol_stat = 'n/a';
+            else
+                s_h = 'OFF';
+                ws_stat = status_ws.return_status;
+                if status_ws.success
+                    sol_stat = status_sol.return_status;
+                else
+                    sol_stat = 'n/a';
+                end
+            end
+        else
+            s_h = 'n/a';
+            ws_stat = status_ws.return_status;
+            if status_ws.success
+                sol_stat = status_sol.return_status;
+            else
+                sol_stat = 'n/a';
+            end
+        end
+            
+        if ebrake(i)
 	        e_h = 'ON';
 	    else
 	        e_h = 'OFF';
-	    end
-	    if safety(i)
-	        ws_stat = 'n/a';
-	        sol_stat = 'n/a';
-	    else
-	        ws_stat = status_ws.return_status;
-	        if status_ws.success
-	            sol_stat = status_sol.return_status;
-	        else
-	            sol_stat = 'n/a';
-	        end
-	    end
+        end
+        
 	    t_h_feas = text(-29, 7, sprintf('HOBCA Online MPC (ws): %s, (sol): %s', ws_stat, sol_stat), 'color', 'b', 'interpreter', 'none');
 	    t_h_safe = text(-29, 5, sprintf('Safety: %s, E-Brake: %s', s_h, e_h), 'color', 'b');
-
-	    [p_OEV, l_OEV] = plotCar(OEV.traj(1,i), OEV.traj(2,i), OEV.traj(3,i), OEV.width, OEV.length, OEV_plt_opts);
-	    [p_EV, l_EV] = plotCar(z_traj(1,i), z_traj(2,i), z_traj(3,i), OEV.width, OEV.length, EV_plt_opts);
-	    if exist('zn_traj', 'var')
-            [p_nEV, l_nEV] = plotCar(zn_traj(1,i), zn_traj(2,i), zn_traj(3,i), OEV.width, OEV.length, nEV_plt_opts);
+        
+        if plt_params.plt_sol
+            [p_OEV, l_OEV] = plotCar(OEV.traj(1,i), OEV.traj(2,i), OEV.traj(3,i), OEV.width, OEV.length, OEV_plt_opts);
         end
+        [p_EV, l_EV] = plotCar(z_traj(1,i), z_traj(2,i), z_traj(3,i), OEV.width, OEV.length, EV_plt_opts);
         
 	    p_TV = [];
 	    l_TV = [];
-	    for j = 1:N+1
+        
+        % Plot TV over horizon and predictions
+        for j = 1:N+1
 	        if j == 1
 	            TV_plt_opts.alpha = 0.5;
 	            TV_plt_opts.frame = true;
@@ -178,38 +180,52 @@ function F = plotExp(dataname, plt_params)
 	        p_TV = [p_TV, p];
 	        l_TV = [l_TV, l];
 	        
-% 	        if ~isnan(hyp{j}.pos)
-% 	            coll_bound_global = rot(TV.heading(i+j-1))*[coll_bound_x; coll_bound_y] + [TV.x(i+j-1); TV.y(i+j-1)];
-% 	            l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
-% 	            if hyp{j}.w(2) == 0
-% 	                hyp_x = [hyp{j}.b, hyp{j}.b];
-% 	                hyp_y = [map_dim(3), map_dim(4)];
-% 	            else
-% 	                hyp_x = [map_dim(1), map_dim(2)];
-% 	                hyp_y = (-hyp{j}.w(1)*hyp_x+hyp{j}.b)/hyp{j}.w(2);
-% 	            end
-% 	            l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
-% 	            l_TV = [l_TV plot([z_ref(1,j) hyp{j}.pos(1)], [z_ref(2,j) hyp{j}.pos(2)], '-o', 'color', cmap(j,:))];
-% 	        end
-	        l_TV = [l_TV plot(z_ref(1,j), z_ref(2,j), 'o', 'color', cmap(j,:))];
-	        if ~safety(i)
-	            l_TV = [l_TV plot(z_pred(1,j), z_pred(2,j), 'd', 'color', cmap(j,:))];
-	        end
-	    end
+            if plt_params.plt_hyp && exist('hyps', 'var')
+                hyp = hyps{i};
+                if ~isnan(hyp{j}.pos)
+                    coll_bound_global = rot(TV.heading(i+j-1))*[coll_bound_x; coll_bound_y] + [TV.x(i+j-1); TV.y(i+j-1)];
+                    l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
+                    if hyp{j}.w(2) == 0
+                        hyp_x = [hyp{j}.b, hyp{j}.b];
+                        hyp_y = [map_dim(3), map_dim(4)];
+                    else
+                        hyp_x = [map_dim(1), map_dim(2)];
+                        hyp_y = (-hyp{j}.w(1)*hyp_x+hyp{j}.b)/hyp{j}.w(2);
+                    end
+                    l_TV = [l_TV plot(hyp_x, hyp_y, 'color', cmap(j,:))];
+                    l_TV = [l_TV plot([z_ref(1,j) hyp{j}.pos(1)], [z_ref(2,j) hyp{j}.pos(2)], '-o', 'color', cmap(j,:))];
+                end
+            end
+            
+            if plt_params.plt_ref
+                l_TV = [l_TV plot(z_ref(1,j), z_ref(2,j), 'o', 'color', cmap(j,:))];
+            end
+            
+            if plt_params.plt_preds
+                if exist('safety', 'var')
+                    if ~safety(i)
+                        l_TV = [l_TV plot(z_pred(1,j), z_pred(2,j), 'd', 'color', cmap(j,:))];
+                    end
+                else
+                    l_TV = [l_TV plot(z_pred(1,j), z_pred(2,j), 'd', 'color', cmap(j,:))];
+                end
+            end
+        end
+        
 	    axis equal
 	    axis(map_dim);
 
 	    axes(ax2)
 	    axis auto
 	    axis(prob_dim);
+        
 	    drawnow
 
-	%     pause(0.05)
 	    F(i) = getframe(fig);
-	end
+    end
 
-	if plt_params.mv_save
-		%% Save Movie
+    if plt_params.mv_save
+		% Save Movie
 		if ~isfolder('../../movies/')
 		    mkdir('../../movies')
 		end
@@ -229,4 +245,5 @@ function F = plotExp(dataname, plt_params)
 		catch
 			disp('Error in saving video')
 		end
-	end
+    end
+end
