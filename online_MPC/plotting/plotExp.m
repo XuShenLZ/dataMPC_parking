@@ -198,7 +198,7 @@ function F = plotExp(dataname, plt_params)
             end
             
             if plt_params.plt_ref
-                l_TV = [l_TV plot(z_ref(1,j), z_ref(2,j), 'o', 'color', cmap(j,:))];
+                l_TV = [l_TV plot(z_ref(1,j), z_ref(2,j), '.', 'color', cmap(j,:), 'markersize', 10)];
             end
             
             if plt_params.plt_preds

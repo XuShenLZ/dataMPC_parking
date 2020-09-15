@@ -107,8 +107,7 @@ function generate_forces_pro_opt_solver_nohpp(params)
 %     opt_codeopts.maxit = 300;
     opt_codeopts.overwrite = 1;
     opt_codeopts.printlevel = 2;
-    opt_codeopts.optlevel = 3;
-    % opt_codeopts.init = 2;
+    opt_codeopts.optlevel = 1;
     opt_codeopts.BuildSimulinkBlock = 0;
 
     opt_codeopts.nlp.ad_tool = 'casadi-351';
