@@ -51,11 +51,16 @@ function F = plotExp(dataname, plt_params)
 	fig = figure('Position', [50 50 1200 600], 'Visible', plt_params.visible);
 
 	ax1 = axes('Position',[0.05 0.55 0.4 0.4]);
-	yline(3.5, '-.', 'color', '#7E2F8E', 'linewidth', 2)
-	hold on
-	yline(-3.5, '-.', 'color', '#7E2F8E', 'linewidth', 2)
+    if isfield(exp_params, 'lane_width')
+        yline(exp_params.lane_width/2, '-.', 'color', '#7E2F8E', 'linewidth', 2)
+        hold on
+        yline(-exp_params.lane_width/2, '-.', 'color', '#7E2F8E', 'linewidth', 2)
+    end
 	axis equal
 	axis(map_dim);
+    if isfield(exp_params, 'name')
+        title(exp_params.name)
+    end
 
 	ax2 = axes('Position',[0.05 0.05 0.4 0.4]);
 	L_line = animatedline(ax2, 'color', '#0072BD', 'linewidth', 2);

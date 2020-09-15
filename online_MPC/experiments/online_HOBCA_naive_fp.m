@@ -10,11 +10,6 @@ exp_num = 1;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
-%% Load strategy prediction model
-model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
-model_file = strcat('../../models/', model_name, '.mat');
-load(model_file)
-
 % Console output saving
 if ~isfolder('../data/')
     mkdir('../data')
@@ -44,10 +39,12 @@ EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 Q = diag([0.05 0.1 0.1 0.5]);
 R = diag([0.01 0.01]);
 d_min = 0.001;
-u_u = [0.35; 1];
-u_l = [-0.35; -1];
-du_u = [0.3; 3];
-du_l = [-0.3; -3];
+u_u = [0.5; 1.5];
+u_l = [-0.5; -1.5];
+du_u = [0.6; 5];
+du_l = [-0.6; -5];
+
+lane_width = 8;
 
 ws_params.name = 'FP_ws_solver_naive';
 ws_params.N = N;
@@ -78,20 +75,18 @@ opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
 
-obca_controller = obca_controller_FP(true, ws_params, opt_params);
+if ~exist('forces_pro_gen', 'dir')
+    mkdir('forces_pro_gen')
+end
+cd forces_pro_gen
+obca_controller = obca_controller_FP(false, ws_params, opt_params);
+cd ..
+addpath('forces_pro_gen')
 
 % Instantiate safety controller
-d_lim = [-0.35, 0.35];
-a_lim = [-1, 1];
-du_lim = [0.3; 3];
-obca_safety_control = safety_controller(dt, d_lim, a_lim, du_lim);
+d_lim = [u_l(1), u_u(1)];
+a_lim = [u_l(2), u_u(2)];
 obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
-
-% ==== Filter Setup
-V = 0.01 * eye(3);
-W = 0.5 * eye(3);
-Pm = 0.2 * eye(3);
-score = ones(3, 1) / 3;
 
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
@@ -114,8 +109,9 @@ collide = zeros(T-N, 1);
 ebrake = zeros(T-N, 1);
 
 exp_params.exp_num = exp_num;
+exp_params.name = 'Naive OBCA MPC';
 exp_params.T = T;
-exp_params.model = model_name;
+exp_params.lane_width = lane_width;
 exp_params.controller.N = N;
 exp_params.controller.Q = Q;
 exp_params.controller.R = R;
@@ -128,9 +124,6 @@ exp_params.dynamics.L_r = L_r;
 exp_params.dynamics.L_f = L_f;
 exp_params.dynamics.n_z = n_z;
 exp_params.dynamics.n_u = n_u;
-exp_params.filter.V = V;
-exp_params.filter.W = W;
-exp_params.filter.Pm = Pm;
 
 ws_solve_times = zeros(T-N, 1);
 opt_solve_times = zeros(T-N, 1);
@@ -171,8 +164,10 @@ for i = 1:T-N
         u_ws = zeros(n_u, N);
         u_prev = zeros(n_u, 1);
     else
-        z_ws = z_preds(:,:,i-1);
-        u_ws = u_preds(:,:,i-1);
+%         z_ws = z_preds(:,:,i-1);
+%         u_ws = u_preds(:,:,i-1);
+        z_ws = [z_preds(:,2:end,i-1) EV_dynamics.f_dt(z_preds(:,end,i-1), u_preds(:,end,i-1))];
+        u_ws = [u_preds(:,2:end,i-1) u_preds(:,end,i-1)];
         u_prev = u_traj(:,i-1);
     end
     

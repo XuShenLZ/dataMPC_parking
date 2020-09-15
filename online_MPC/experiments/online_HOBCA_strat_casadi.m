@@ -289,8 +289,10 @@ for i = 1:T-N
         u_ws = zeros(n_u, N);
         u_prev = zeros(n_u, 1);
     else
-        z_ws = z_preds(:,:,i-1);
-        u_ws = u_preds(:,:,i-1);
+%         z_ws = z_preds(:,:,i-1);
+%         u_ws = u_preds(:,:,i-1);
+        z_ws = [z_preds(:,2:end,i-1) EV_dynamics.f_dt(z_preds(:,end,i-1), u_preds(:,end,i-1))];
+        u_ws = [u_preds(:,2:end,i-1) u_preds(:,end,i-1)];
         u_prev = u_traj(:,i-1);
     end
     

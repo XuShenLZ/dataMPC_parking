@@ -49,11 +49,23 @@ u_l = [-0.5; -1.5];
 du_u = [0.6; 5];
 du_l = [-0.6; -5];
 
+n_obs = 1;
+tv_obs = cell(n_obs, N+1);
+lane_width = 8;
+% P_u = Polyhedron('V', [-30, 10; 30, 10; -30, lane_width/2; 30, lane_width/2]);
+% P_l = Polyhedron('V', [-30, -10; 30, -10; -30, -lane_width/2; 30, -lane_width/2]);
+% for i = 1:N+1
+%     tv_obs{2,i}.A = P_u.A;
+%     tv_obs{2,i}.b = P_u.b;
+%     tv_obs{3,i}.A = P_l.A;
+%     tv_obs{3,i}.b = P_l.b;
+% end
+
 ws_params.name = 'FP_ws_solver_strat';
 ws_params.N = N;
 ws_params.n_x = n_z;
 ws_params.n_u = n_u;
-ws_params.n_obs = 1;
+ws_params.n_obs = n_obs;
 ws_params.n_ineq = 4;
 ws_params.d_ineq = 2;
 ws_params.G = EV.G;
@@ -63,7 +75,7 @@ opt_params.name = 'FP_opt_solver_strat';
 opt_params.N = N;
 opt_params.n_x = n_z;
 opt_params.n_u = n_u;
-opt_params.n_obs = 1;
+opt_params.n_obs = n_obs;
 opt_params.n_ineq = 4;
 opt_params.d_ineq = 2;
 opt_params.G = EV.G;
@@ -82,7 +94,7 @@ if ~exist('forces_pro_gen', 'dir')
     mkdir('forces_pro_gen')
 end
 cd forces_pro_gen
-obca_controller = hpp_obca_controller_FP(true, ws_params, opt_params);
+obca_controller = hpp_obca_controller_FP(false, ws_params, opt_params);
 cd ..
 addpath('forces_pro_gen')
 
@@ -124,7 +136,9 @@ strategy_locks = zeros(T-N);
 hyps = cell(T-N, 1);
 
 exp_params.exp_num = exp_num;
+exp_params.name = 'Strategy OBCA MPC';
 exp_params.T = T;
+exp_params.lane_width = lane_width;
 exp_params.model = model_name;
 exp_params.controller.N = N;
 exp_params.controller.Q = Q;
@@ -160,7 +174,6 @@ for i = 1:T-N
     EV_v  = z_traj(4,i);
 
     EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
-%     EV_curr = [EV_x; EV_y; 0; EV_v*cos(EV_th); EV_v*sin(EV_th)];
     
     % Get x, y, heading, and velocity from target vehicle over prediction
     % horizon
@@ -234,11 +247,6 @@ for i = 1:T-N
     
     % ======= Use the ref traj to detect collision
     z_detect = z_ref; % Use the ref to construct hpp
-%     if i == 1
-%         z_detect = z_ref;
-%     else
-%         z_detect = z_preds(:,:,i-1);
-%     end
     horizon_collision = [];
     for j = 1:N+1
         collision = check_collision(z_detect(1:2,j), TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
@@ -287,7 +295,7 @@ for i = 1:T-N
     end
     
     % Generate target vehicle obstacle descriptions
-    tv_obs = get_car_poly_obs(TV_pred, TV.width, TV.length);
+    tv_obs(1,:) = get_car_poly_obs(TV_pred, TV.width, TV.length);
     
     if ~obca_mpc_safety && yield
         % Compute the distance threshold for applying braking assuming max
@@ -313,8 +321,10 @@ for i = 1:T-N
         u_ws = zeros(n_u, N);
         u_prev = zeros(n_u, 1);
     else
-        z_ws = z_preds(:,:,i-1);
-        u_ws = u_preds(:,:,i-1);
+%         z_ws = z_preds(:,:,i-1);
+%         u_ws = u_preds(:,:,i-1);
+        z_ws = [z_preds(:,2:end,i-1) EV_dynamics.f_dt(z_preds(:,end,i-1), u_preds(:,end,i-1))];
+        u_ws = [u_preds(:,2:end,i-1) u_preds(:,end,i-1)];
         u_prev = u_traj(:,i-1);
     end
     
