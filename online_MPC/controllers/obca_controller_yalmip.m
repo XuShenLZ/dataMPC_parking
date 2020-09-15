@@ -179,6 +179,7 @@ classdef obca_controller_yalmip
                 
                 % Objective
                 objective = objective + (self.z(:,k+1)-z_ref(:,k+1))'*self.Q*(self.z(:,k+1)-z_ref(:,k+1)) + self.u(:,k)'*self.R*self.u(:,k);
+                disp(k)
             end
             
             % Solver options

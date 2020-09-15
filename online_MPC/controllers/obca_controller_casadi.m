@@ -252,9 +252,6 @@ classdef obca_controller_casadi
         end
         
         function [z_pred, u_pred, status, self] = solve(self, z_s, u_prev, z_ref)
-            % hyp: cell array of length N+1 containing the hyperplane
-            % constraints for time steps 1:N+1 (self.hyp_ph drops the first time
-            % step because of equality constraint)
             self.opti.set_value(self.z_s, z_s);
             self.opti.set_value(self.u_prev, u_prev);
             self.opti.set_value(self.z_ref, z_ref);

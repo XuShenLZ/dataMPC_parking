@@ -57,10 +57,11 @@ classdef safety_controller
             TV_y = TV_pred(2,1);
             TV_th = TV_pred(3,1);
             TV_v = TV_pred(4,1);
-    
+
             [a, obj.speed_PID_controller] = obj.speed_PID_controller.solve(EV_v);
             
             if EV_v < 0
+%                 obj.steer_PID_controller = obj.steer_PID_controller.set_x_ref(-TV_y);
                 [delta, obj.steer_PID_controller] = obj.steer_PID_controller.solve(EV_y - 10*EV_th);
 %                 [delta, obj.steer_PID_controller] = obj.steer_PID_controller.solve(EV_y - EV_th);
             else

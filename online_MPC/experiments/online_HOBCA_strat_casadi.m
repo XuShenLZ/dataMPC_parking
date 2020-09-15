@@ -141,7 +141,8 @@ for i = 1:T-N
     EV_th = z_traj(3,i);
     EV_v  = z_traj(4,i);
 
-    EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
+%     EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
+    EV_curr = [EV_x; EV_y; 0; EV_v*cos(EV_th); EV_v*sin(EV_th)];
     
     % Get x, y, heading, and velocity from target vehicle over prediction
     % horizon

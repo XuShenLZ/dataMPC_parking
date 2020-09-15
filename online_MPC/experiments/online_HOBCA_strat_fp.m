@@ -6,7 +6,7 @@ pathsetup();
 
 %% Load testing data
 % uiopen('load')
-exp_num = 1;
+exp_num = 4;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -44,10 +44,10 @@ EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 Q = diag([0.05 0.1 0.1 0.5]);
 R = diag([0.01 0.01]);
 d_min = 0.001;
-u_u = [0.35; 1];
-u_l = [-0.35; -1];
-du_u = [0.3; 3];
-du_l = [-0.3; -3];
+u_u = [0.5; 1.5];
+u_l = [-0.5; -1.5];
+du_u = [0.6; 5];
+du_l = [-0.6; -5];
 
 ws_params.name = 'FP_ws_solver_strat';
 ws_params.N = N;
@@ -78,13 +78,18 @@ opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
 
+if ~exist('forces_pro_gen', 'dir')
+    mkdir('forces_pro_gen')
+end
+cd forces_pro_gen
 obca_controller = hpp_obca_controller_FP(true, ws_params, opt_params);
+cd ..
+addpath('forces_pro_gen')
 
 % Instantiate safety controller
-d_lim = [-0.35, 0.35];
-a_lim = [-1, 1];
-du_lim = [0.3; 3];
-obca_safety_control = safety_controller(dt, d_lim, a_lim, du_lim);
+d_lim = [u_l(1), u_u(1)];
+a_lim = [u_l(2), u_u(2)];
+obca_safety_control = safety_controller(dt, d_lim, a_lim, du_u);
 obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 % ==== Filter Setup
@@ -142,6 +147,7 @@ opt_solve_times = zeros(T-N, 1);
 
 total_times = zeros(T-N, 1);
 
+strategy_lock = false;
 %% 
 for i = 1:T-N
     tic
@@ -154,6 +160,7 @@ for i = 1:T-N
     EV_v  = z_traj(4,i);
 
     EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
+%     EV_curr = [EV_x; EV_y; 0; EV_v*cos(EV_th); EV_v*sin(EV_th)];
     
     % Get x, y, heading, and velocity from target vehicle over prediction
     % horizon
@@ -196,7 +203,7 @@ for i = 1:T-N
         if rel_state(1,1) < -r
             fprintf('EV has passed TV, tracking nominal reference velocity\n')
         end
-    elseif max(score) > 0.55 && max_idx < 3
+    elseif max(score) > 0.55 && max_idx < 3 || strategy_lock
         % If strategy is not yield discount reference velocity based on max
         % likelihood
         % EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
@@ -227,6 +234,11 @@ for i = 1:T-N
     
     % ======= Use the ref traj to detect collision
     z_detect = z_ref; % Use the ref to construct hpp
+%     if i == 1
+%         z_detect = z_ref;
+%     else
+%         z_detect = z_preds(:,:,i-1);
+%     end
     horizon_collision = [];
     for j = 1:N+1
         collision = check_collision(z_detect(1:2,j), TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
@@ -234,16 +246,15 @@ for i = 1:T-N
     end
 
     % Lock the strategy if more than 3 steps are colliding
-%     if sum(horizon_collision) >= 3
-%         strategy_idx = last_idx;
-%         strategy_lock = true;
-%     else
-%         strategy_idx = max_idx;
-%         last_idx = max_idx;
-%         strategy_lock = false;
-%     end
-    strategy_lock = false;
-    strategy_idx = max_idx;
+    if sum(horizon_collision) >= 3 && max(score) > 0.55 || strategy_lock
+        strategy_idx = last_idx;
+        strategy_lock = true;
+    else
+        strategy_idx = max_idx;
+        last_idx = max_idx;
+        strategy_lock = false;
+    end
+%     strategy_idx = max_idx;
     
     % Generate hyperplane constraints
     hyp = cell(N+1,1);

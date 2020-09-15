@@ -10,18 +10,21 @@ function F = plotExp(dataname, plt_params)
 	r = sqrt(OEV.width^2 + OEV.length^2)/2; % Collision buffer radius
 	d_lim = exp_params.controller.d_lim;
 	a_lim = exp_params.controller.a_lim;
-
-	OEV_plt_opts.circle = false;
+    
+    OEV_plt_opts.circle = false;
 	OEV_plt_opts.frame = false;
 	OEV_plt_opts.color = 'g';
 	OEV_plt_opts.alpha = 0.5;
-
-	EV_plt_opts.circle = false;
+    
+    if plt_params.plt_col_buf
+        EV_plt_opts.circle = true;
+    else
+        EV_plt_opts.circle = false;
+    end
 	EV_plt_opts.frame = true;
 	EV_plt_opts.color = 'b';
 	EV_plt_opts.alpha = 0.5;
 
-	TV_plt_opts.circle = false;
 	TV_plt_opts.color = 'y';
 
 	cmap = jet(N+1);
@@ -83,14 +86,12 @@ function F = plotExp(dataname, plt_params)
 	ax_h_s = axes('Position',[0.5 0.05 0.45 0.2]);
 	h_s_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2);
 	h_e_l = animatedline(ax_h_s, 'color', '#D95319', 'linewidth', 2, 'linestyle', '--');
-	legend('Safety', 'E-Brake')
+    h_c_l = animatedline(ax_h_s, 'color', '#77AC30', 'linewidth', 2, 'linestyle', '--');
+	legend('Safety', 'E-Brake', 'Collision')
 	ylabel('safety')
 	axis([1 T-N 0 1])
 
     for i = 1:T-N
-	    status_ws = ws_stats{i};
-	    status_sol = sol_stats{i};
-	    
 	    z_ref = z_refs(:,:,i);
 	    z_pred = z_preds(:,:,i);
 	    u_pred = u_preds(:,:,i);
@@ -111,6 +112,7 @@ function F = plotExp(dataname, plt_params)
 	    addpoints(h_d_l, i, u_traj(1,i));
 	    addpoints(h_a_l, i, u_traj(2,i));
 	    addpoints(h_e_l, i, double(ebrake(i)));
+        addpoints(h_c_l, i, double(collide(i)));
 
 	    % Delete lines and patches from last iteration
 	    delete(p_EV); delete(l_EV); delete(p_OEV); delete(l_OEV); 
@@ -132,20 +134,24 @@ function F = plotExp(dataname, plt_params)
                 sol_stat = 'n/a';
             else
                 s_h = 'OFF';
-                ws_stat = status_ws.return_status;
-                if status_ws.success
-                    sol_stat = status_sol.return_status;
-                else
-                    sol_stat = 'n/a';
+                ws_stat = 'n/a';
+                sol_stat = sol_stats{i}.return_status;
+                if exist('ws_stats', 'var')
+                    ws_stat = ws_stats{i}.return_status;
+                    if ~ws_stats{i}.success
+                        sol_stat = 'n/a';
+                    end
                 end
             end
         else
             s_h = 'n/a';
-            ws_stat = status_ws.return_status;
-            if status_ws.success
-                sol_stat = status_sol.return_status;
-            else
-                sol_stat = 'n/a';
+            ws_stat = 'n/a';
+            sol_stat = sol_stats{i}.return_status;
+            if exist('ws_stats', 'var')
+                ws_stat = ws_stats{i}.return_status;
+                if ~ws_stats{i}.success
+                    sol_stat = 'n/a';
+                end
             end
         end
             
@@ -171,7 +177,13 @@ function F = plotExp(dataname, plt_params)
 	        if j == 1
 	            TV_plt_opts.alpha = 0.5;
 	            TV_plt_opts.frame = true;
-	        else
+                if plt_params.plt_col_buf
+                    TV_plt_opts.circle = true;
+                else
+                    TV_plt_opts.circle = false;
+                end
+            else
+                TV_plt_opts.circle = false;
 	            TV_plt_opts.alpha = 0;
 	            TV_plt_opts.frame = false;
 	        end

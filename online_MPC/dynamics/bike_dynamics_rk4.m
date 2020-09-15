@@ -19,7 +19,7 @@ classdef bike_dynamics_rk4
     
             x_dot= [x(4)*cos(x(3)+beta(u(1)));
                 x(4)*sin(x(3)+beta(u(1)));
-                x(4)*sin(beta(x(3)))/self.L_r;
+                x(4)*sin(beta(u(1)))/self.L_r;
                 u(2)];
         end
         
