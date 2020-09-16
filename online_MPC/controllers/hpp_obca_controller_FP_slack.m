@@ -110,7 +110,7 @@ classdef hpp_obca_controller_FP_slack
                 params = [params; z_ref(:,k); obs_A; obs_b; hyp_w; hyp_b];
                     
                 if k == self.opt_params.N+1
-                    x0 = [x0; self.z_ws(:,k); zeros(n_obs*n_ineq,1); zeros(n_obs*n_ineq,1); zeros(n_obs,1)];
+                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,self.opt_params.N); self.mu_ws(:,self.opt_params.N); zeros(n_obs,1)];
                 else
                     x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k); zeros(n_obs,1)];
                 end

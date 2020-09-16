@@ -61,7 +61,7 @@ function F = plotExp(dataname, plt_params)
 	axis equal
 	axis(map_dim);
     if isfield(exp_params, 'name')
-        title(exp_params.name)
+        title(sprintf('%s, exp %i', exp_params.name, exp_params.exp_num))
     end
 
 	ax2 = axes('Position',[0.05 0.05 0.4 0.4]);
@@ -256,8 +256,7 @@ function F = plotExp(dataname, plt_params)
 		    mkdir('../../movies')
 		end
 
-		[file,path] = uiputfile(sprintf('../../movies/%s_Exp%d_%s.mp4', ...
-		                    plt_params.mv_name, exp_params.exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
+		[file,path] = uiputfile(sprintf('../../movies/%s.mp4', plt_params.mv_name));
 
 		v = VideoWriter([path, file], 'MPEG-4');
 		v.FrameRate = 10;

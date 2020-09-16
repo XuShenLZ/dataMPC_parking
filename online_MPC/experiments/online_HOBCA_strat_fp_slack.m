@@ -21,7 +21,8 @@ if ~isfolder('../data/')
 end
 
 time = datestr(now,'yyyy-mm-dd_HH-MM');
-diary(sprintf('../data/FP_StratOBCA_Exp%d_%s.txt', exp_num, time))
+filename = sprintf('FP_StratOBCASlack_Exp%d_%s', exp_num, time);
+diary(sprintf('../data/%s.txt', filename))
 
 %% Experiment parameters
 N = 20; % Prediction horizon
@@ -41,10 +42,10 @@ M = 10; % RK4 steps
 EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
 % Instantiate obca controller
-Q = diag([1 0.1 0.5 1]);
-% Q = diag([0.1 0.01 0.5 0.5]);
-R = diag([0.001 0.001]);
-alpha = 0.5;
+% Q = diag([0.05 0.1 0.1 0.5]);
+Q = diag([10 1 1 5]);
+R = diag([1 1]);
+alpha = 0.1;
 
 d_min = 0.001;
 u_u = [0.5; 1.5];
@@ -109,8 +110,8 @@ addpath('forces_pro_gen')
 % Instantiate safety controller
 d_lim = [u_l(1), u_u(1)];
 a_lim = [u_l(2), u_u(2)];
-obca_safety_control = safety_controller(dt, d_lim, a_lim, du_u);
-obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
+safety_control = safety_controller(dt, d_lim, a_lim, du_u);
+ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 % ==== Filter Setup
 V = 0.01 * eye(3);
@@ -232,7 +233,6 @@ for i = 1:T-N
         EV_v_ref = max(score)*v_ref*ones(1, N+1);
 %         EV_v_ref = v_ref*ones(1, N+1);
         obca_mpc_safety = false;
-        niv_mpc_safety = false;
         fprintf('Confidence: %g, threshold met, tracking score discounted reference velocity\n', max(score))
     else
         % If yield or not clear to left or right
@@ -336,7 +336,7 @@ for i = 1:T-N
         u_prev = u_traj(:,i-1);
     end
     
-    fprintf('------- Solving Strategy OBCA -------\n')
+    fprintf('------- Solving Strategy OBCA w/ slack -------\n')
     
     obca_mpc_ebrake = false;
     status_sol = [];
@@ -348,7 +348,7 @@ for i = 1:T-N
     end
 
     if ~status_ws.success || ~status_sol.success
-        if safety(i-1)
+        if i > 1 && safety(i-1)
             obca_mpc_safety = true;
             fprintf('HOBCA not feasible, maintaining the safety control\n')
         else
@@ -361,8 +361,8 @@ for i = 1:T-N
     end
     
     if obca_mpc_safety
-        obca_safety_control = obca_safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
-        [u_safe, obca_safety_control] = obca_safety_control.solve(z_traj(:,i), TV_pred, u_prev);
+        safety_control = safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
+        [u_safe, safety_control] = safety_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume safety control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_safe zeros(n_u, N-1)];
@@ -373,7 +373,7 @@ for i = 1:T-N
         end
         fprintf('Applying safety control\n')
     elseif obca_mpc_ebrake
-        [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(z_traj(:,i), TV_pred, u_traj(:,i-1));
+        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, u_traj(:,i-1));
         % Assume ebrake control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_ebrake zeros(n_u, N-1)];
@@ -415,8 +415,10 @@ for i = 1:T-N
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/FP_StratOBCA_Exp%d_%s.mat', exp_num, time);
-save(filename, 'exp_params', 'OEV', 'TV', ...
+fprintf('\n=================== Complete ==================\n')
+fprintf('Output log saved in: %s.txt, data saved in: %s.mat\n', filename)
+
+save(sprintf('../data/%s.mat', filename), 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'safety', 'ebrake', ...
     'scores', 'strategy_idxs', 'strategy_locks', 'hyps', ...
     'ws_solve_times', 'opt_solve_times', 'total_times')

@@ -111,8 +111,6 @@ classdef coll_buf_controller_casadi
             % Set warm start value
             self.opti.set_initial(self.z, z_ws);
             self.opti.set_initial(self.u, u_ws);
-%             self.opti.set_initial(self.z, z_ref);
-%             self.opti.set_initial(self.u, zeros(self.n_u, self.N));
             
             self.opti.set_value(self.z_s, z_s);
             self.opti.set_value(self.u_prev, u_prev);

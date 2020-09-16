@@ -6,7 +6,7 @@ pathsetup();
 
 %% Load testing data
 % uiopen('load')
-exp_num = 1;
+exp_num = 4;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -16,7 +16,8 @@ if ~isfolder('../data/')
 end
 
 time = datestr(now,'yyyy-mm-dd_HH-MM');
-diary(sprintf('../data/FP_NaiveCollBuf_Exp%d_%s.txt', exp_num, time))
+filename = sprintf('FP_NaiveCollBuf_Exp%d_%s', exp_num, time);
+diary(sprintf('../data/%s.txt', filename))
 
 %%
 N = 20; % Prediction horizon
@@ -35,10 +36,12 @@ L_f = EV.L/2;
 M = 10; % RK4 steps
 EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
-% Instantiate obca controller
-Q = diag([0.05 0.1 0.1 0.5]);
-R = diag([0.01 0.01]);
-d_min = 0.001;
+% Instantiate collision buffer controller
+% Q = diag([0.05 0.1 0.1 0.5]);
+% R = diag([0.01 0.01]);
+Q = diag([10 1 1 5]);
+R = diag([1 1]);
+
 u_u = [0.5; 1.5];
 u_l = [-0.5; -1.5];
 du_u = [0.6; 5];
@@ -47,6 +50,14 @@ du_l = [-0.6; -5];
 n_obs = 1;
 tv_obs = cell(n_obs, N+1);
 lane_width = 8;
+% P_u = Polyhedron('V', [-30, 10; 30, 10; -30, lane_width/2; 30, lane_width/2]);
+% P_l = Polyhedron('V', [-30, -10; 30, -10; -30, -lane_width/2; 30, -lane_width/2]);
+% for i = 1:N+1
+%     tv_obs{2,i}.A = P_u.A;
+%     tv_obs{2,i}.b = P_u.b;
+%     tv_obs{3,i}.A = P_l.A;
+%     tv_obs{3,i}.b = P_l.b;
+% end
 
 opt_params.name = 'FP_opt_solver_naive_coll_buf';
 opt_params.N = N;
@@ -74,7 +85,7 @@ addpath('forces_pro_gen')
 % Instantiate safety controller
 d_lim = [u_l(1), u_u(1)];
 a_lim = [u_l(2), u_u(2)];
-obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
+ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
@@ -90,7 +101,6 @@ z_preds = zeros(n_z, N+1, T-N);
 u_preds = zeros(n_u, N, T-N);
 z_refs = zeros(n_z, N+1, T-N);
 
-ws_stats = cell(T-N, 1);
 sol_stats = cell(T-N, 1);
 
 collide = zeros(T-N, 1);
@@ -103,7 +113,6 @@ exp_params.lane_width = lane_width;
 exp_params.controller.N = N;
 exp_params.controller.Q = Q;
 exp_params.controller.R = R;
-exp_params.controller.d_min = d_min;
 exp_params.controller.d_lim = d_lim;
 exp_params.controller.a_lim = a_lim;
 exp_params.dynamics.dt = dt;
@@ -114,7 +123,6 @@ exp_params.dynamics.n_z = n_z;
 exp_params.dynamics.n_u = n_u;
 
 opt_solve_times = zeros(T-N, 1);
-
 total_times = zeros(T-N, 1);
 
 %% 
@@ -134,21 +142,17 @@ for i = 1:T-N
     z_ref = [z_traj(1,i)+[0:N]*dt*v_ref; zeros(1,N+1); zeros(1,N+1); v_ref*ones(1,N+1)]; 
     
     % Generate target vehicle obstacle descriptions
-%     tv_obs = get_car_poly_obs(TV_pred, TV.width, TV.length);
     for k = 1:N+1
         tv_obs{1,k}.pos = TV_pred(1:2,k);
         tv_obs{1,k}.r = r;
     end
 
-    % HPP OBCA MPC
     % Initialize prediction guess for warm start
     if i == 1
         z_ws = z_ref;
         u_ws = zeros(n_u, N);
         u_prev = zeros(n_u, 1);
     else
-%         z_ws = z_preds(:,:,i-1);
-%         u_ws = u_preds(:,:,i-1);
         z_ws = [z_preds(:,2:end,i-1) EV_dynamics.f_dt(z_preds(:,end,i-1), u_preds(:,end,i-1))];
         u_ws = [u_preds(:,2:end,i-1) u_preds(:,end,i-1)];
         u_prev = u_traj(:,i-1);
@@ -158,10 +162,10 @@ for i = 1:T-N
     
     % Naive controller
     coll_buf_mpc_ebrake = false;
-    [z_pred, u_pred, status_sol, coll_buf_controller] = coll_buf_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs);
+    [z_pred, u_pred, status_sol, coll_buf_controller] = coll_buf_controller.solve(z_traj(:,i), u_prev, z_ref, z_ws, u_ws, tv_obs);
     
     if ~status_sol.success
-        % If OBCA MPC is infeasible, activate ebrake controller
+        % If MPC is infeasible, activate ebrake controller
         coll_buf_mpc_ebrake = true;
         fprintf('Naive Collision Buffer MPC not feasible, activating emergency brake\n')
     else
@@ -169,7 +173,7 @@ for i = 1:T-N
     end
     
     if coll_buf_mpc_ebrake
-        [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(z_traj(:,i), TV_pred, u_prev);
+        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume ebrake control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_ebrake zeros(n_u, N-1)];
@@ -200,9 +204,11 @@ for i = 1:T-N
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/FP_NaiveCollBuf_Exp%d_%s.mat', exp_num, time);
-save(filename, 'exp_params', 'OEV', 'TV', ...
-    'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'ebrake', ...
-    'ws_solve_times', 'opt_solve_times', 'total_times')
+fprintf('\n=================== Complete ==================\n')
+fprintf('Output log saved in: %s.txt, data saved in: %s.mat\n', filename, filename)
+
+save(sprintf('../data/%s.mat', filename), 'exp_params', 'OEV', 'TV', ...
+    'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'sol_stats', 'collide', 'ebrake', ...
+    'opt_solve_times', 'total_times')
 
 diary off

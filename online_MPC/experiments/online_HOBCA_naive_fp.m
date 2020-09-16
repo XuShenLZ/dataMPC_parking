@@ -16,7 +16,8 @@ if ~isfolder('../data/')
 end
 
 time = datestr(now,'yyyy-mm-dd_HH-MM');
-diary(sprintf('../data/FP_NaiveOBCA_Exp%d_%s.txt', exp_num, time))
+filename = sprintf('FP_NaiveOBCA_Exp%d_%s', exp_num, time);
+diary(sprintf('../data/%s.txt', filename))
 
 %%
 N = 20; % Prediction horizon
@@ -40,11 +41,14 @@ EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 % R = diag([0.01 0.01]);
 Q = diag([10 1 1 5]);
 R = diag([1 1]);
-d_min = 0.001;
+
 u_u = [0.5; 1.5];
 u_l = [-0.5; -1.5];
 du_u = [0.6; 5];
 du_l = [-0.6; -5];
+
+% d_min = 0.01;
+d_min = 0.001;
 
 n_obs = 1;
 tv_obs = cell(n_obs, N+1);
@@ -98,7 +102,7 @@ addpath('forces_pro_gen')
 % Instantiate safety controller
 d_lim = [u_l(1), u_u(1)];
 a_lim = [u_l(2), u_u(2)];
-obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
+ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 % Make a copy of EV as the optimal EV, and naive EV
 OEV = EV;
@@ -121,7 +125,7 @@ collide = zeros(T-N, 1);
 ebrake = zeros(T-N, 1);
 
 exp_params.exp_num = exp_num;
-exp_params.name = 'Naive OBCA MPC';
+exp_params.name = 'FP Naive OBCA MPC';
 exp_params.T = T;
 exp_params.lane_width = lane_width;
 exp_params.controller.N = N;
@@ -139,21 +143,12 @@ exp_params.dynamics.n_u = n_u;
 
 ws_solve_times = zeros(T-N, 1);
 opt_solve_times = zeros(T-N, 1);
-
 total_times = zeros(T-N, 1);
 
 %% 
 for i = 1:T-N
     tic
     fprintf('\n=================== Iteration: %i ==================\n', i)
-    
-    % Get x, y, heading, and velocity from ego vehicle at current timestep
-    EV_x  = z_traj(1,i);
-    EV_y  = z_traj(2,i);
-    EV_th = z_traj(3,i);
-    EV_v  = z_traj(4,i);
-
-    EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
     
     % Get x, y, heading, and velocity from target vehicle over prediction
     % horizon
@@ -176,14 +171,12 @@ for i = 1:T-N
         u_ws = zeros(n_u, N);
         u_prev = zeros(n_u, 1);
     else
-%         z_ws = z_preds(:,:,i-1);
-%         u_ws = u_preds(:,:,i-1);
         z_ws = [z_preds(:,2:end,i-1) EV_dynamics.f_dt(z_preds(:,end,i-1), u_preds(:,end,i-1))];
         u_ws = [u_preds(:,2:end,i-1) u_preds(:,end,i-1)];
         u_prev = u_traj(:,i-1);
     end
     
-    fprintf('------- Solving Naive OBCA -------\n')
+    fprintf('------- Solving Naive OBCA MPC -------\n')
     
     % Naive controller
     obca_mpc_ebrake = false;
@@ -197,13 +190,13 @@ for i = 1:T-N
     if ~status_ws.success || ~status_sol.success
         % If OBCA MPC is infeasible, activate ebrake controller
         obca_mpc_ebrake = true;
-        fprintf('Naive HOBCA not feasible, activating emergency brake\n')
+        fprintf('Naive OBCA MPC not feasible, activating emergency brake\n')
     else
         opt_solve_times(i) = status_sol.solve_time;
     end
     
     if obca_mpc_ebrake
-        [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(z_traj(:,i), TV_pred, u_prev);
+        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume ebrake control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_ebrake zeros(n_u, N-1)];
@@ -235,8 +228,10 @@ for i = 1:T-N
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/FP_NaiveOBCA_Exp%d_%s.mat', exp_num, time);
-save(filename, 'exp_params', 'OEV', 'TV', ...
+fprintf('\n=================== Complete ==================\n')
+fprintf('Output log saved in: %s.txt, data saved in: %s.mat\n', filename, filename)
+
+save(sprintf('../data/%s.mat', filename), 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'ebrake', ...
     'ws_solve_times', 'opt_solve_times', 'total_times')
 

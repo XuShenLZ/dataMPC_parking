@@ -21,7 +21,8 @@ if ~isfolder('../data/')
 end
 
 time = datestr(now,'yyyy-mm-dd_HH-MM');
-diary(sprintf('../data/FP_StratOBCA_Exp%d_%s.txt', exp_num, time))
+filename = sprintf('FP_StratOBCA_Exp%d_%s', exp_num, time);
+diary(sprintf('../data/%s.txt', filename))
 
 %% Experiment parameters
 N = 20; % Prediction horizon
@@ -44,11 +45,13 @@ EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 % Q = diag([0.05 0.1 0.1 0.5]);
 Q = diag([10 1 1 5]);
 R = diag([1 1]);
-d_min = 0.001;
+
 u_u = [0.5; 1.5];
 u_l = [-0.5; -1.5];
 du_u = [0.6; 5];
 du_l = [-0.6; -5];
+
+d_min = 0.01; %0.001;
 
 n_obs = 1;
 tv_obs = cell(n_obs, N+1);
@@ -102,8 +105,8 @@ addpath('forces_pro_gen')
 % Instantiate safety controller
 d_lim = [u_l(1), u_u(1)];
 a_lim = [u_l(2), u_u(2)];
-obca_safety_control = safety_controller(dt, d_lim, a_lim, du_u);
-obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
+safety_control = safety_controller(dt, d_lim, a_lim, du_u);
+ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 % ==== Filter Setup
 V = 0.01 * eye(3);
@@ -137,7 +140,7 @@ strategy_locks = zeros(T-N);
 hyps = cell(T-N, 1);
 
 exp_params.exp_num = exp_num;
-exp_params.name = 'Strategy OBCA MPC';
+exp_params.name = 'FP Strategy OBCA MPC';
 exp_params.T = T;
 exp_params.lane_width = lane_width;
 exp_params.model = model_name;
@@ -159,7 +162,6 @@ exp_params.filter.Pm = Pm;
 
 ws_solve_times = zeros(T-N, 1);
 opt_solve_times = zeros(T-N, 1);
-
 total_times = zeros(T-N, 1);
 
 strategy_lock = false;
@@ -210,7 +212,6 @@ for i = 1:T-N
         EV_x_ref = EV_x + [0:N]*dt*v_ref;
         EV_v_ref = v_ref*ones(1, N+1);
         obca_mpc_safety = false;
-        niv_mpc_safety = false;
         if all( abs(rel_state(1, :)) > 20 )
             fprintf('Cars are far away, tracking nominal reference velocity\n')
         end
@@ -225,7 +226,6 @@ for i = 1:T-N
         EV_v_ref = max(score)*v_ref*ones(1, N+1);
 %         EV_v_ref = v_ref*ones(1, N+1);
         obca_mpc_safety = false;
-        niv_mpc_safety = false;
         fprintf('Confidence: %g, threshold met, tracking score discounted reference velocity\n', max(score))
     else
         % If yield or not clear to left or right
@@ -263,7 +263,6 @@ for i = 1:T-N
         last_idx = max_idx;
         strategy_lock = false;
     end
-%     strategy_idx = max_idx;
     
     % Generate hyperplane constraints
     hyp = cell(N+1,1);
@@ -287,8 +286,8 @@ for i = 1:T-N
             hyp{j}.b = hyp_b;
             hyp{j}.pos = hyp_xy;
         else
-%             hyp{j}.w = zeros(n_z,1);
-%             hyp{j}.b = 0;
+            % Placeholder hyperplane constraint which will always be
+            % satisfied
             hyp{j}.w = [sign(ref(1)); sign(ref(2)); zeros(2,1)];
             hyp{j}.b = 0;
             hyp{j}.pos = nan;
@@ -304,8 +303,7 @@ for i = 1:T-N
         rel_vx = TV_v(1)*cos(TV_th(1)) - EV_v*cos(EV_th);
         min_ts = ceil(-rel_vx/abs(a_lim(1))/dt); % Number of timesteps requred for relative velocity to be zero
         v_brake = abs(rel_vx)+[0:min_ts]*dt*a_lim(1); % Velocity when applying max decceleration
-%         brake_thresh = sum(abs(v_brake)*dt) + abs(TV_v(1)*cos(TV_th(1)))*(min_ts+1)*dt + 2*r; % Distance threshold for safety controller to be applied
-        brake_thresh = sum(abs(v_brake)*dt) + 4*r;
+        brake_thresh = sum(abs(v_brake)*dt) + 5*r;  % Distance threshold for safety controller to be applied
         d = norm(TV_pred(1:2,1) - EV_curr(1:2), 2); % Distance between ego and target vehicles
         if  d <= brake_thresh
             % If distance between cars is within the braking threshold,
@@ -322,8 +320,6 @@ for i = 1:T-N
         u_ws = zeros(n_u, N);
         u_prev = zeros(n_u, 1);
     else
-%         z_ws = z_preds(:,:,i-1);
-%         u_ws = u_preds(:,:,i-1);
         z_ws = [z_preds(:,2:end,i-1) EV_dynamics.f_dt(z_preds(:,end,i-1), u_preds(:,end,i-1))];
         u_ws = [u_preds(:,2:end,i-1) u_preds(:,end,i-1)];
         u_prev = u_traj(:,i-1);
@@ -333,7 +329,6 @@ for i = 1:T-N
     
     obca_mpc_ebrake = false;
     status_sol = [];
-
     [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
     if status_ws.success
         ws_solve_times(i) = status_ws.solve_time;
@@ -341,21 +336,21 @@ for i = 1:T-N
     end
 
     if ~status_ws.success || ~status_sol.success
-        if safety(i-1)
+        if i > 1 && safety(i-1)
             obca_mpc_safety = true;
-            fprintf('HOBCA not feasible, maintaining the safety control\n')
+            fprintf('Strategy OBCA not feasible, maintaining the safety control\n')
         else
             % If OBCA MPC is infeasible, activate ebrake controller
             obca_mpc_ebrake = true;
-            fprintf('HOBCA not feasible, activating emergency brake\n')
+            fprintf('Strategy OBCA not feasible, activating emergency brake\n')
         end
     else
         opt_solve_times(i) = status_sol.solve_time;
     end
     
     if obca_mpc_safety
-        obca_safety_control = obca_safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
-        [u_safe, obca_safety_control] = obca_safety_control.solve(z_traj(:,i), TV_pred, u_prev);
+        safety_control = safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
+        [u_safe, safety_control] = safety_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume safety control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_safe zeros(n_u, N-1)];
@@ -366,7 +361,7 @@ for i = 1:T-N
         end
         fprintf('Applying safety control\n')
     elseif obca_mpc_ebrake
-        [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(z_traj(:,i), TV_pred, u_traj(:,i-1));
+        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, u_traj(:,i-1));
         % Assume ebrake control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_ebrake zeros(n_u, N-1)];
@@ -396,7 +391,6 @@ for i = 1:T-N
 
     % Check the collision at the current time step
     collide(i) = check_current_collision(z_traj, EV, TV, i);
-    
     safety(i) = obca_mpc_safety;
     ebrake(i) = obca_mpc_ebrake;
     
@@ -408,8 +402,10 @@ for i = 1:T-N
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/FP_StratOBCA_Exp%d_%s.mat', exp_num, time);
-save(filename, 'exp_params', 'OEV', 'TV', ...
+fprintf('\n=================== Complete ==================\n')
+fprintf('Output log saved in: %s.txt, data saved in: %s.mat\n', filename, filename)
+
+save(sprintf('../data/%s.mat', filename), 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'safety', 'ebrake', ...
     'scores', 'strategy_idxs', 'strategy_locks', 'hyps', ...
     'ws_solve_times', 'opt_solve_times', 'total_times')

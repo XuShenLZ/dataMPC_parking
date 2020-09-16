@@ -109,7 +109,6 @@ function generate_forces_pro_opt_solver(params)
     opt_codeopts.overwrite = 1;
     opt_codeopts.printlevel = 2;
     opt_codeopts.optlevel = 3;
-    % opt_codeopts.init = 2;
     opt_codeopts.BuildSimulinkBlock = 0;
 
     opt_codeopts.nlp.ad_tool = 'casadi-351';
@@ -118,8 +117,8 @@ function generate_forces_pro_opt_solver(params)
     opt_codeopts.nlp.TolStat = 1e-3;
     opt_codeopts.nlp.TolEq = 1e-3;
     opt_codeopts.nlp.TolIneq = 1e-3;
-    % opt_codeopts.nlp.hessian_approximation = 'gauss-newton';
-    % opt_codeopts.nlp.BarrStrat = 'monotone';
+%     opt_codeopts.nlp.hessian_approximation = 'gauss-newton';
+%     opt_codeopts.nlp.BarrStrat = 'monotone';
 
 %     opt_codeopts.linesearch.minstep = 1e-8;
 %     opt_codeopts.linesearch.maxstep = 0.9;
