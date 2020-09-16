@@ -2,6 +2,7 @@
 Data driven MPC in parking lot
 
 Xu Shen, xu_shen@berkeley.edu
+Edward Zhu, edward_zhu@berkeley.edu
 
 ## Dependencies
 ### MATLAB:
@@ -12,6 +13,13 @@ Xu Shen, xu_shen@berkeley.edu
 5. Forces Pro (For fast implementation)
 
 ## Change log
+### 09/16/2020
+1. Fixed bug in `./online_MPC/dynamics/bike_dynamics_rk4.m`
+2. Added forces pro implementations of naive receding horizon MPC and collision buffer MPC
+3. A bunch of plotting updates in `./online_MPC/plotting/plotExp.m`
+4. Standardized controller and experiment file formats
+5. Forces pro generated files are dumped into `./online_MPC/experiments/forces_pro_gen`
+
 ### 09/11/2020
 1. Added rate constriants to safety controller.
 2. Always solve HOBCA in every timestep. If the threshold just comes above the threshold, the HOBCA is applied only if it is feasible.
@@ -68,7 +76,7 @@ Xu Shen, xu_shen@berkeley.edu
 ### 08/03/2020
 1. Added the strategy generation (`nominal_MPC/check_strategy_labels.m` and `nominal_MPC/generat_strategy_data.m`) and its parallel datagen version for constructing dataset (`learning/strategy_datagen.m`).
 2. Changed `learning/loda_train_model.m` to `learning/load_train_regression.m` for the specific use of regression of hyperplane.
-3. Added `load_train_classify.m` for constructing dataset for strategy classification. 
+3. Added `load_train_classify.m` for constructing dataset for strategy classification.
 4. Added classifiers: Gaussian SVM (`learning/gSVM.m`), bagged tree (`learning/bagTree.m`), and KNN (`learning/knn.m`)
 
 ### 07/31/2020
