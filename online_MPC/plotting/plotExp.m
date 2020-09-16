@@ -4,7 +4,8 @@ function F = plotExp(dataname, plt_params)
 
 	map_dim = [-30 30 -10 10];
 	strategies = ["Left", "Right", "Yield"];
-
+    colors = {'#0072BD', '#D95319', '#77AC30'};
+    
 	T = exp_params.T;
 	N = exp_params.controller.N;
 	r = sqrt(OEV.width^2 + OEV.length^2)/2; % Collision buffer radius
@@ -28,7 +29,8 @@ function F = plotExp(dataname, plt_params)
 	TV_plt_opts.color = 'y';
 
 	cmap = jet(N+1);
-
+    
+    l_s = []; t_s = [];
 	p_EV = []; l_EV = [];
 	p_OEV = []; l_OEV = [];
 	p_TV = []; l_TV = [];
@@ -63,9 +65,9 @@ function F = plotExp(dataname, plt_params)
     end
 
 	ax2 = axes('Position',[0.05 0.05 0.4 0.4]);
-	L_line = animatedline(ax2, 'color', '#0072BD', 'linewidth', 2);
-	R_line = animatedline(ax2, 'color', '#D95319', 'linewidth', 2);
-	Y_line = animatedline(ax2, 'color', '#77AC30', 'linewidth', 2);
+	L_line = animatedline(ax2, 'color', colors{1}, 'linewidth', 2);
+	R_line = animatedline(ax2, 'color', colors{2}, 'linewidth', 2);
+	Y_line = animatedline(ax2, 'color', colors{3}, 'linewidth', 2);
 	legend('Left', 'Right', 'Yield')
 	prob_dim = [1 T-N 0 1];
 	ylabel('Score')
@@ -97,6 +99,11 @@ function F = plotExp(dataname, plt_params)
 	axis([1 T-N 0 1])
 
     for i = 1:T-N
+        % Delete lines and patches from last iteration
+	    delete(p_EV); delete(l_EV); delete(p_OEV); delete(l_OEV); 
+	    delete(p_TV); delete(l_TV); 
+	    delete(t_EV_ref); delete(t_Y); delete(t_h_feas); delete(t_h_safe);
+        
 	    z_ref = z_refs(:,:,i);
 	    z_pred = z_preds(:,:,i);
 	    u_pred = u_preds(:,:,i);
@@ -107,10 +114,17 @@ function F = plotExp(dataname, plt_params)
         end
 	    
         if exist('scores', 'var')
+            delete(l_s); delete(t_s);
+            axes(ax2);
+            hold on
             score = scores(:,i);
             addpoints(L_line, i, score(1));
             addpoints(R_line, i, score(2));
             addpoints(Y_line, i, score(3));
+            
+            l_s = plot(i, max(score), 'ko');
+            hold on
+            t_s = text(i, max(score)+0.05, sprintf('%g', max(score)));
         end
 	    
 	    addpoints(h_v_l, i, z_traj(4,i));
@@ -119,11 +133,6 @@ function F = plotExp(dataname, plt_params)
 	    addpoints(h_e_l, i, double(ebrake(i)));
         addpoints(h_c_l, i, double(collide(i)));
 
-	    % Delete lines and patches from last iteration
-	    delete(p_EV); delete(l_EV); delete(p_OEV); delete(l_OEV); 
-	    delete(p_TV); delete(l_TV); 
-	    delete(t_EV_ref); delete(t_Y); delete(t_h_feas); delete(t_h_safe);
-	    
 	    % Plot
 	    axes(ax1);
         if exist('strategy_idxs', 'var')
