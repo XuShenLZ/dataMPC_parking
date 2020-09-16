@@ -3,7 +3,7 @@ clear all
 
 % Plot and save movie
 
-fname = '../data/FP_NaiveOBCA_Exp1_2020-09-15_16-50.mat';
+fname = '../data/casadi_NaiveOBCA_Exp1_2020-09-15_17-28.mat';
 
 plt_params.visible = 'on'; % or 'off' to shut down real time display
 plt_params.plt_hyp = false;

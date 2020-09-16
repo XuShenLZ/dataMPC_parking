@@ -38,8 +38,6 @@ classdef coll_buf_controller_casadi
             self.R = params.R;
             self.dynamics = params.dynamics;
             self.n_obs = params.n_obs;
-            self.n_ineq = params.n_ineq;
-            self.d_ineq = params.d_ineq;
             self.n_x = params.n_x;
             self.n_u = params.n_u;
             self.u_u = params.u_u;
