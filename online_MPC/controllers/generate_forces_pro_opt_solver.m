@@ -1,5 +1,5 @@
 function generate_forces_pro_opt_solver(params)
-    global n_x n_u n_obs n_ineq d_ineq G g Q R dynamics
+    global n_x n_u n_obs n_ineq d_ineq m_ineq G g Q R dynamics
     
     n_x = params.n_x;
     n_u = params.n_u;
@@ -8,6 +8,7 @@ function generate_forces_pro_opt_solver(params)
     d_ineq = params.d_ineq;
     G = params.G;
     g = params.g;
+    m_ineq = size(G,1);
     Q = params.Q;
     R = params.R;
     dt = params.dt;
@@ -41,9 +42,9 @@ function generate_forces_pro_opt_solver(params)
         ls_objective{i} = @eval_opt_ls_obj;
         
         % [x_k, lambda_k, mu_k, u_k, u_km1]
-        nvar(i) = n_x + n_obs*n_ineq + n_obs*n_ineq + n_u + n_u;
-        ub{i} = [inf*ones(n_x,1); inf*ones(n_obs*n_ineq+n_obs*n_ineq,1); u_u; u_u];
-        lb{i} = [-inf*ones(n_x,1); zeros(n_obs*n_ineq+n_obs*n_ineq,1); u_l; u_l];
+        nvar(i) = n_x + n_obs*n_ineq + n_obs*m_ineq + n_u + n_u;
+        ub{i} = [inf*ones(n_x,1); inf*ones(n_obs*n_ineq+n_obs*m_ineq,1); u_u; u_u];
+        lb{i} = [-inf*ones(n_x,1); zeros(n_obs*n_ineq+n_obs*m_ineq,1); u_l; u_l];
         
         % [obca_d, obca_norm, hyp, du]
         nh(i) = n_obs + n_obs + 1 + n_u;
@@ -57,15 +58,15 @@ function generate_forces_pro_opt_solver(params)
         if i == opt_model.N-1
             % [dynamics, obca]
             neq(i) = n_x + n_obs*d_ineq;
-            E{i} = [eye(n_x), zeros(n_x, n_obs*n_ineq + n_obs*n_ineq);
-                zeros(n_obs*d_ineq, n_x + n_obs*n_ineq + n_obs*n_ineq)];
+            E{i} = [eye(n_x), zeros(n_x, n_obs*n_ineq + n_obs*m_ineq);
+                zeros(n_obs*d_ineq, n_x + n_obs*n_ineq + n_obs*m_ineq)];
             eq{i} = @eval_opt_eq_Nm1;
         else
             % [augmented dynamics, obca]
             neq(i) = n_x + n_u + n_obs*d_ineq;
-            E{i} = [eye(n_x), zeros(n_x, n_obs*n_ineq + n_obs*n_ineq + n_u + n_u);
-                zeros(n_u,  n_x + n_obs*n_ineq + n_obs*n_ineq + n_u), eye(n_u);
-                zeros(n_obs*d_ineq, n_x + n_obs*n_ineq + n_obs*n_ineq + n_u + n_u)];
+            E{i} = [eye(n_x), zeros(n_x, n_obs*n_ineq + n_obs*m_ineq + n_u + n_u);
+                zeros(n_u,  n_x + n_obs*n_ineq + n_obs*m_ineq + n_u), eye(n_u);
+                zeros(n_obs*d_ineq, n_x + n_obs*n_ineq + n_obs*m_ineq + n_u + n_u)];
             eq{i} = @eval_opt_eq;
         end
     end
@@ -73,9 +74,9 @@ function generate_forces_pro_opt_solver(params)
     ls_objective{opt_model.N} = @eval_opt_ls_obj_N;
     
     % [x_k, lambda_k, mu_k]
-    nvar(opt_model.N) = n_x + n_obs*n_ineq + n_obs*n_ineq;
-    ub{opt_model.N} = [inf*ones(n_x,1); inf*ones(n_obs*n_ineq + n_obs*n_ineq,1)];
-    lb{opt_model.N} = [-inf*ones(n_x,1); zeros(n_obs*n_ineq + n_obs*n_ineq,1)];
+    nvar(opt_model.N) = n_x + n_obs*n_ineq + n_obs*m_ineq;
+    ub{opt_model.N} = [inf*ones(n_x,1); inf*ones(n_obs*n_ineq + n_obs*m_ineq,1)];
+    lb{opt_model.N} = [-inf*ones(n_x,1); zeros(n_obs*n_ineq + n_obs*m_ineq,1)];
     
     % [obca_d, obca_norm, hyp]
     nh(opt_model.N) = n_obs + n_obs + 1;
@@ -101,7 +102,7 @@ function generate_forces_pro_opt_solver(params)
     opt_model.ub = ub;
     opt_model.lb = lb;
     
-    opt_model.xinitidx = [1:n_x, n_x+n_obs*n_ineq+n_obs*n_ineq+n_u+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u+n_u];
+    opt_model.xinitidx = [1:n_x, n_x+n_obs*n_ineq+n_obs*m_ineq+n_u+1:n_x+n_obs*n_ineq+n_obs*m_ineq+n_u+n_u];
     
     opt_codeopts = getOptions(params.name);
 %     opt_codeopts.maxit = 300;
@@ -114,9 +115,9 @@ function generate_forces_pro_opt_solver(params)
     opt_codeopts.nlp.ad_tool = 'casadi-351';
     opt_codeopts.nlp.linear_solver = 'symm_indefinite';
 
-%     opt_codeopts.nlp.TolStat = 1e-3;
-%     opt_codeopts.nlp.TolEq = 1e-3;
-%     opt_codeopts.nlp.TolIneq = 1e-3;
+    opt_codeopts.nlp.TolStat = 1e-3;
+    opt_codeopts.nlp.TolEq = 1e-3;
+    opt_codeopts.nlp.TolIneq = 1e-3;
     % opt_codeopts.nlp.hessian_approximation = 'gauss-newton';
     % opt_codeopts.nlp.BarrStrat = 'monotone';
 
@@ -143,20 +144,20 @@ end
 
 % Stage cost
 function opt_obj = eval_opt_obj(z, p)
-    global n_obs n_ineq n_x n_u Q R
+    global n_obs n_ineq m_ineq n_x n_u Q R
     
     x = z(1:n_x);
-    u = z(n_x+n_obs*n_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u);
+    u = z(n_x+n_obs*n_ineq+n_obs*m_ineq+1:n_x+n_obs*n_ineq+n_obs*m_ineq+n_u);
     x_ref = p(1:n_x);
     
     opt_obj = bilin(Q, x-x_ref, x-x_ref) + bilin(R, u, u);
 end
 
 function opt_obj = eval_opt_ls_obj(z, p)
-    global n_obs n_ineq n_x n_u Q R
+    global n_obs n_ineq m_ineq n_x n_u Q R
     
     x = z(1:n_x);
-    u = z(n_x+n_obs*n_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u);
+    u = z(n_x+n_obs*n_ineq+n_obs*m_ineq+1:n_x+n_obs*n_ineq+n_obs*m_ineq+n_u);
     x_ref = p(1:n_x);
     
     opt_obj = mtimes(sqrtm(blkdiag(Q,R)), vertcat(x-x_ref,u));
@@ -183,10 +184,10 @@ end
 
 % Equality constraints at each stage
 function opt_eq = eval_opt_eq(z, p)
-    global n_x n_u n_obs n_ineq d_ineq G dynamics
+    global n_x n_u n_obs n_ineq d_ineq m_ineq G dynamics
     
     x = z(1:n_x);
-    u = z(n_x+n_obs*n_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u);
+    u = z(n_x+n_obs*n_ineq+n_obs*m_ineq+1:n_x+n_obs*n_ineq+n_obs*m_ineq+n_u);
     
     R_opt = [cos(z(3)), -sin(z(3)); sin(z(3)), cos(z(3))];
 
@@ -194,7 +195,7 @@ function opt_eq = eval_opt_eq(z, p)
     for i = 1:n_obs
         A = reshape(p(n_x+(i-1)*n_ineq*d_ineq+1:n_x+i*n_ineq*d_ineq), n_ineq, d_ineq);
         lambda = z(n_x+(i-1)*n_ineq+1:n_x+i*n_ineq);
-        mu = z(n_x+n_obs*n_ineq+(i-1)*n_ineq+1:n_x+n_obs*n_ineq+i*n_ineq);
+        mu = z(n_x+n_obs*n_ineq+(i-1)*m_ineq+1:n_x+n_obs*n_ineq+i*m_ineq);
 
         opt_eq = vertcat(opt_eq, mtimes(G', mu)+mtimes(transpose(mtimes(A, R_opt)), lambda));
     end
@@ -202,10 +203,10 @@ end
 
 % Equality constraints at last stage
 function opt_eq = eval_opt_eq_Nm1(z, p)
-    global n_x n_u n_obs n_ineq d_ineq G dynamics
+    global n_x n_u n_obs n_ineq d_ineq m_ineq G dynamics
     
     x = z(1:n_x);
-    u = z(n_x+n_obs*n_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u);
+    u = z(n_x+n_obs*n_ineq+n_obs*m_ineq+1:n_x+n_obs*n_ineq+n_obs*m_ineq+n_u);
     
     R_opt = [cos(z(3)), -sin(z(3)); sin(z(3)), cos(z(3))];
 
@@ -213,7 +214,7 @@ function opt_eq = eval_opt_eq_Nm1(z, p)
     for i = 1:n_obs
         A = reshape(p(n_x+(i-1)*n_ineq*d_ineq+1:n_x+i*n_ineq*d_ineq), n_ineq, d_ineq);
         lambda = z(n_x+(i-1)*n_ineq+1:n_x+i*n_ineq);
-        mu = z(n_x+n_obs*n_ineq+(i-1)*n_ineq+1:n_x+n_obs*n_ineq+i*n_ineq);
+        mu = z(n_x+n_obs*n_ineq+(i-1)*m_ineq+1:n_x+n_obs*n_ineq+i*m_ineq);
         
         opt_eq = vertcat(opt_eq, mtimes(G', mu)+mtimes(transpose(mtimes(A, R_opt)), lambda));
     end
@@ -221,11 +222,11 @@ end
 
 % Inequality constraints at each stage
 function opt_ineq = eval_opt_ineq(z, p)
-    global n_x n_u n_obs n_ineq d_ineq g
+    global n_x n_u n_obs n_ineq d_ineq m_ineq g
 
     x = z(1:n_x);
-    u = z(n_x+n_obs*n_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u);
-    u_p = z(n_x+n_obs*n_ineq+n_obs*n_ineq+n_u+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u+n_u);
+    u = z(n_x+n_obs*n_ineq+n_obs*m_ineq+1:n_x+n_obs*n_ineq+n_obs*m_ineq+n_u);
+    u_p = z(n_x+n_obs*n_ineq+n_obs*m_ineq+n_u+1:n_x+n_obs*n_ineq+n_obs*m_ineq+n_u+n_u);
     hyp_w = p(n_x+n_obs*n_ineq*d_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq*d_ineq+n_obs*n_ineq+n_x);
     hyp_b = p(n_x+n_obs*n_ineq*d_ineq+n_obs*n_ineq+n_x+1);
     
@@ -236,7 +237,7 @@ function opt_ineq = eval_opt_ineq(z, p)
         A = reshape(p(n_x+(i-1)*n_ineq*d_ineq+1:n_x+i*n_ineq*d_ineq), n_ineq, d_ineq);
         b = p(n_x+n_obs*n_ineq*d_ineq+(i-1)*n_ineq+1:n_x+n_obs*n_ineq*d_ineq+i*n_ineq);    
         lambda = z(n_x+(i-1)*n_ineq+1:n_x+i*n_ineq);
-        mu = z(n_x+n_obs*n_ineq+(i-1)*n_ineq+1:n_x+n_obs*n_ineq+i*n_ineq);
+        mu = z(n_x+n_obs*n_ineq+(i-1)*m_ineq+1:n_x+n_obs*n_ineq+i*m_ineq);
         
         opt_ineq = vertcat(opt_ineq, -dot(g,mu)+mtimes(transpose(mtimes(A,t_opt)-b),lambda));
         opt_ineq = vertcat(opt_ineq, dot(mtimes(transpose(A),lambda), mtimes(transpose(A),lambda)));     
@@ -248,7 +249,7 @@ end
 
 % Inequality constraints at last stage
 function opt_ineq = eval_opt_ineq_N(z, p)
-    global n_x n_obs n_ineq d_ineq g
+    global n_x n_obs n_ineq d_ineq m_ineq g
     
     x = z(1:n_x);
     hyp_w = p(n_x+n_obs*n_ineq*d_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq*d_ineq+n_obs*n_ineq+n_x);
@@ -261,7 +262,7 @@ function opt_ineq = eval_opt_ineq_N(z, p)
         A = reshape(p(n_x+(i-1)*n_ineq*d_ineq+1:n_x+i*n_ineq*d_ineq), n_ineq, d_ineq);
         b = p(n_x+n_obs*n_ineq*d_ineq+(i-1)*n_ineq+1:n_x+n_obs*n_ineq*d_ineq+i*n_ineq);
         lambda = z(n_x+(i-1)*n_ineq+1:n_x+i*n_ineq);
-        mu = z(n_x+n_obs*n_ineq+(i-1)*n_ineq+1:n_x+n_obs*n_ineq+i*n_ineq);
+        mu = z(n_x+n_obs*n_ineq+(i-1)*m_ineq+1:n_x+n_obs*n_ineq+i*m_ineq);
         
         opt_ineq = vertcat(opt_ineq, -dot(g, mu)+mtimes(transpose(mtimes(A,t_opt)-b),lambda));
         opt_ineq = vertcat(opt_ineq, dot(mtimes(transpose(A), lambda), mtimes(transpose(A),lambda)));

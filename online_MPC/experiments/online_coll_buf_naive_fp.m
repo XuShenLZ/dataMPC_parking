@@ -6,7 +6,7 @@ pathsetup();
 
 %% Load testing data
 % uiopen('load')
-exp_num = 4;
+exp_num = 1;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -16,7 +16,7 @@ if ~isfolder('../data/')
 end
 
 time = datestr(now,'yyyy-mm-dd_HH-MM');
-diary(sprintf('../data/FP_NaiveOBCA_Exp%d_%s.txt', exp_num, time))
+diary(sprintf('../data/FP_NaiveCollBuf_Exp%d_%s.txt', exp_num, time))
 
 %%
 N = 20; % Prediction horizon
@@ -36,10 +36,8 @@ M = 10; % RK4 steps
 EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
 % Instantiate obca controller
-% Q = diag([0.05 0.1 0.1 0.5]);
-% R = diag([0.01 0.01]);
-Q = diag([10 1 1 5]);
-R = diag([1 1]);
+Q = diag([0.05 0.1 0.1 0.5]);
+R = diag([0.01 0.01]);
 d_min = 0.001;
 u_u = [0.5; 1.5];
 u_l = [-0.5; -1.5];
@@ -49,35 +47,12 @@ du_l = [-0.6; -5];
 n_obs = 1;
 tv_obs = cell(n_obs, N+1);
 lane_width = 8;
-% P_u = Polyhedron('V', [-30, 10; 30, 10; -30, lane_width/2; 30, lane_width/2]);
-% P_l = Polyhedron('V', [-30, -10; 30, -10; -30, -lane_width/2; 30, -lane_width/2]);
-% for i = 1:N+1
-%     tv_obs{2,i}.A = P_u.A;
-%     tv_obs{2,i}.b = P_u.b;
-%     tv_obs{3,i}.A = P_l.A;
-%     tv_obs{3,i}.b = P_l.b;
-% end
 
-ws_params.name = 'FP_ws_solver_naive';
-ws_params.N = N;
-ws_params.n_x = n_z;
-ws_params.n_u = n_u;
-ws_params.n_obs = n_obs;
-ws_params.n_ineq = 4;
-ws_params.d_ineq = 2;
-ws_params.G = EV.G;
-ws_params.g = EV.g;
-
-opt_params.name = 'FP_opt_solver_naive';
+opt_params.name = 'FP_opt_solver_naive_coll_buf';
 opt_params.N = N;
 opt_params.n_x = n_z;
 opt_params.n_u = n_u;
 opt_params.n_obs = n_obs;
-opt_params.n_ineq = 4;
-opt_params.d_ineq = 2;
-opt_params.G = EV.G;
-opt_params.g = EV.g;
-opt_params.d_min = d_min;
 opt_params.Q = Q;
 opt_params.R = R;
 opt_params.u_u = u_u;
@@ -86,12 +61,13 @@ opt_params.du_u = du_u;
 opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
+opt_params.EV_r = r;
 
 if ~exist('forces_pro_gen', 'dir')
     mkdir('forces_pro_gen')
 end
 cd forces_pro_gen
-obca_controller = obca_controller_FP(true, ws_params, opt_params);
+coll_buf_controller = coll_buf_controller_FP(true, opt_params);
 cd ..
 addpath('forces_pro_gen')
 
@@ -121,7 +97,7 @@ collide = zeros(T-N, 1);
 ebrake = zeros(T-N, 1);
 
 exp_params.exp_num = exp_num;
-exp_params.name = 'Naive OBCA MPC';
+exp_params.name = 'FP Naive Collision Buffer MPC';
 exp_params.T = T;
 exp_params.lane_width = lane_width;
 exp_params.controller.N = N;
@@ -137,7 +113,6 @@ exp_params.dynamics.L_f = L_f;
 exp_params.dynamics.n_z = n_z;
 exp_params.dynamics.n_u = n_u;
 
-ws_solve_times = zeros(T-N, 1);
 opt_solve_times = zeros(T-N, 1);
 
 total_times = zeros(T-N, 1);
@@ -146,14 +121,6 @@ total_times = zeros(T-N, 1);
 for i = 1:T-N
     tic
     fprintf('\n=================== Iteration: %i ==================\n', i)
-    
-    % Get x, y, heading, and velocity from ego vehicle at current timestep
-    EV_x  = z_traj(1,i);
-    EV_y  = z_traj(2,i);
-    EV_th = z_traj(3,i);
-    EV_v  = z_traj(4,i);
-
-    EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
     
     % Get x, y, heading, and velocity from target vehicle over prediction
     % horizon
@@ -167,7 +134,11 @@ for i = 1:T-N
     z_ref = [z_traj(1,i)+[0:N]*dt*v_ref; zeros(1,N+1); zeros(1,N+1); v_ref*ones(1,N+1)]; 
     
     % Generate target vehicle obstacle descriptions
-    tv_obs = get_car_poly_obs(TV_pred, TV.width, TV.length);
+%     tv_obs = get_car_poly_obs(TV_pred, TV.width, TV.length);
+    for k = 1:N+1
+        tv_obs{1,k}.pos = TV_pred(1:2,k);
+        tv_obs{1,k}.r = r;
+    end
 
     % HPP OBCA MPC
     % Initialize prediction guess for warm start
@@ -183,26 +154,21 @@ for i = 1:T-N
         u_prev = u_traj(:,i-1);
     end
     
-    fprintf('------- Solving Naive OBCA -------\n')
+    fprintf('------- Solving Naive Collision Buffer MPC -------\n')
     
     % Naive controller
-    obca_mpc_ebrake = false;
-    status_sol = [];
-    [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
-    if status_ws.success
-        ws_solve_times(i) = status_ws.solve_time;
-        [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs);
-    end
+    coll_buf_mpc_ebrake = false;
+    [z_pred, u_pred, status_sol, coll_buf_controller] = coll_buf_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs);
     
-    if ~status_ws.success || ~status_sol.success
+    if ~status_sol.success
         % If OBCA MPC is infeasible, activate ebrake controller
-        obca_mpc_ebrake = true;
-        fprintf('Naive HOBCA not feasible, activating emergency brake\n')
+        coll_buf_mpc_ebrake = true;
+        fprintf('Naive Collision Buffer MPC not feasible, activating emergency brake\n')
     else
         opt_solve_times(i) = status_sol.solve_time;
     end
     
-    if obca_mpc_ebrake
+    if coll_buf_mpc_ebrake
         [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume ebrake control is applied for one time step then no
         % control action is applied for rest of horizon
@@ -229,13 +195,12 @@ for i = 1:T-N
 
     % Check the collision at the current time step
     collide(i) = check_current_collision(z_traj, EV, TV, i);
-    ebrake(i) = obca_mpc_ebrake;
+    ebrake(i) = coll_buf_mpc_ebrake;
 
-    ws_stats{i} = status_ws;
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/FP_NaiveOBCA_Exp%d_%s.mat', exp_num, time);
+filename = sprintf('../data/FP_NaiveCollBuf_Exp%d_%s.mat', exp_num, time);
 save(filename, 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'ebrake', ...
     'ws_solve_times', 'opt_solve_times', 'total_times')

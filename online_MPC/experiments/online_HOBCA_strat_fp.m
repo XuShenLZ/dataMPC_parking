@@ -42,8 +42,8 @@ EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
 % Instantiate obca controller
 % Q = diag([0.05 0.1 0.1 0.5]);
-Q = diag([0.1 0.01 0.5 0.5]);
-R = diag([0.01 0.01]);
+Q = diag([10 1 1 5]);
+R = diag([1 1]);
 d_min = 0.001;
 u_u = [0.5; 1.5];
 u_l = [-0.5; -1.5];
