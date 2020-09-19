@@ -6,7 +6,7 @@ pathsetup();
 
 %% Load testing data
 % uiopen('load')
-exp_num = 4;
+exp_num = 1;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -53,20 +53,20 @@ du_l = [-0.6; -5];
 
 d_min = 0.01; %0.001;
 
-n_obs = 1;
-n_ineq = [4];
-% n_obs = 3;
-% n_ineq = [4,1,1];
+% n_obs = 1;
+% n_ineq = [4];
+n_obs = 3;
+n_ineq = [4,1,1];
 d_ineq = 2;
 
 tv_obs = cell(n_obs, N+1);
 lane_width = 30;
-% for i = 1:N+1
-%     tv_obs{2,i}.A = [0, -1];
-%     tv_obs{2,i}.b = -lane_width/2;
-%     tv_obs{3,i}.A = [0, 1];
-%     tv_obs{3,i}.b = -lane_width/2;
-% end
+for i = 1:N+1
+    tv_obs{2,i}.A = [0, -1];
+    tv_obs{2,i}.b = -lane_width/2;
+    tv_obs{3,i}.A = [0, 1];
+    tv_obs{3,i}.b = -lane_width/2;
+end
 
 ws_params.name = 'FP_ws_solver_strat';
 ws_params.N = N;

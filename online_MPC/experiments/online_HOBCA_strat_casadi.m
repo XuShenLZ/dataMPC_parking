@@ -6,7 +6,7 @@ pathsetup();
 
 %% Load testing data
 % uiopen('load')
-exp_num = 4;
+exp_num = 1;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -20,7 +20,9 @@ if ~isfolder('../data/')
     mkdir('../data')
 end
 
-diary(sprintf('../data/casadi_HppOBCA_Exp%d_%s', exp_num, datestr(now,'yyyy-mm-dd_HH-MM')))
+time = datestr(now,'yyyy-mm-dd_HH-MM');
+filename = sprintf('casadi_HppOBCA_Exp%d_%s', exp_num, time);
+diary(sprintf('../data/%s.txt', filename))
 
 %%
 N = 20; % Prediction horizon
@@ -40,21 +42,38 @@ M = 10; % RK4 steps
 EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
 % Instantiate obca controller
-Q = diag([0.05 0.1 0.1 0.5]);
-R = diag([0.01 0.01]);
+Q = diag([10 1 1 5]);
+R = diag([1 1]);
+
+% d_min = 0.01;
 d_min = 0.001;
-u_u = [0.35; 1];
-u_l = [-0.35; -1];
-du_u = [0.3; 3];
-du_l = [-0.3; -3];
+u_u = [0.5; 1.5];
+u_l = [-0.5; -1.5];
+du_u = [0.6; 5];
+du_l = [-0.6; -5];
+
+% n_obs = 1;
+% n_ineq = [4];
+n_obs = 3;
+n_ineq = [4,1,1];
+d_ineq = 2;
+
+tv_obs = cell(n_obs, N+1);
+lane_width = 8;
+for i = 1:N+1
+    tv_obs{2,i}.A = [0, -1];
+    tv_obs{2,i}.b = -lane_width/2;
+    tv_obs{3,i}.A = [0, 1];
+    tv_obs{3,i}.b = -lane_width/2;
+end
 
 opt_params.name = 'casadi_opt_solver_strat';
 opt_params.N = N;
 opt_params.n_x = n_z;
 opt_params.n_u = n_u;
-opt_params.n_obs = 1;
-opt_params.n_ineq = 4;
-opt_params.d_ineq = 2;
+opt_params.n_obs = n_obs;
+opt_params.n_ineq = n_ineq;
+opt_params.d_ineq = d_ineq;
 opt_params.G = EV.G;
 opt_params.g = EV.g;
 opt_params.d_min = d_min;
@@ -70,11 +89,10 @@ opt_params.dt = dt;
 obca_controller = hpp_obca_controller_casadi(opt_params);
 
 % Instantiate safety controller
-d_lim = [-0.35, 0.35];
-a_lim = [-1, 1];
-du_lim = [0.3; 3];
-obca_safety_control = safety_controller(dt, d_lim, a_lim, du_lim);
-obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
+d_lim = [u_l(1), u_u(1)];
+a_lim = [u_l(2), u_u(2)];
+safety_control = safety_controller(dt, d_lim, a_lim, du_u);
+ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 % ==== Filter Setup
 V = 0.01 * eye(3);
@@ -108,7 +126,9 @@ strategy_locks = zeros(T-N);
 hyps = cell(T-N, 1);
 
 exp_params.exp_num = exp_num;
+exp_params.name = 'casadi Strategy OBCA MPC';
 exp_params.T = T;
+exp_params.lane_width = lane_width;
 exp_params.model = model_name;
 exp_params.controller.N = N;
 exp_params.controller.Q = Q;
@@ -130,10 +150,10 @@ ws_solve_times = zeros(T-N, 1);
 opt_solve_times = zeros(T-N, 1);
 total_times = zeros(T-N, 1);
 
+strategy_lock = false;
 for i = 1:T-N
     tic
-    fprintf('=====================================\n')
-    fprintf('Iteration: %i\n', i)
+    fprintf('\n=================== Iteration: %i ==================\n', i)
     
     % Get x, y, heading, and velocity from ego vehicle at current timestep
     EV_x  = z_traj(1,i);
@@ -141,8 +161,8 @@ for i = 1:T-N
     EV_th = z_traj(3,i);
     EV_v  = z_traj(4,i);
 
-%     EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
-    EV_curr = [EV_x; EV_y; 0; EV_v*cos(EV_th); EV_v*sin(EV_th)];
+    EV_curr = [EV_x; EV_y; EV_th; EV_v*cos(EV_th); EV_v*sin(EV_th)];
+%     EV_curr = [EV_x; EV_y; 0; EV_v*cos(EV_th); EV_v*sin(EV_th)];
     
     % Get x, y, heading, and velocity from target vehicle over prediction
     % horizon
@@ -178,14 +198,13 @@ for i = 1:T-N
         EV_x_ref = EV_x + [0:N]*dt*v_ref;
         EV_v_ref = v_ref*ones(1, N+1);
         obca_mpc_safety = false;
-        niv_mpc_safety = false;
         if all( abs(rel_state(1, :)) > 20 )
             fprintf('Cars are far away, tracking nominal reference velocity\n')
         end
         if rel_state(1,1) < -r
             fprintf('EV has passed TV, tracking nominal reference velocity\n')
         end
-    elseif max(score) > 0.55 && max_idx < 3
+    elseif max(score) > 0.55 && max_idx < 3 || strategy_lock
         % If strategy is not yield discount reference velocity based on max
         % likelihood
         % EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
@@ -193,7 +212,6 @@ for i = 1:T-N
         EV_v_ref = max(score)*v_ref*ones(1, N+1);
 %         EV_v_ref = v_ref*ones(1, N+1);
         obca_mpc_safety = false;
-        niv_mpc_safety = false;
         fprintf('Confidence: %g, threshold met, tracking score discounted reference velocity\n', max(score))
     else
         % If yield or not clear to left or right
@@ -223,16 +241,14 @@ for i = 1:T-N
     end
 
     % Lock the strategy if more than 3 steps are colliding
-%     if sum(horizon_collision) >= 3
-%         strategy_idx = last_idx;
-%         strategy_lock = true;
-%     else
-%         strategy_idx = max_idx;
-%         last_idx = max_idx;
-%         strategy_lock = false;
-%     end
-    strategy_lock = false;
-    strategy_idx = max_idx;
+    if sum(horizon_collision) >= 3 && max(score) > 0.55 || strategy_lock
+        strategy_idx = last_idx;
+        strategy_lock = true;
+    else
+        strategy_idx = max_idx;
+        last_idx = max_idx;
+        strategy_lock = false;
+    end
     
     % Generate hyperplane constraints
     hyp = cell(N+1,1);
@@ -263,7 +279,7 @@ for i = 1:T-N
     end
     
     % Generate target vehicle obstacle descriptions
-    tv_obs = get_car_poly_obs(TV_pred, TV.width, TV.length);
+    tv_obs(1,:) = get_car_poly_obs(TV_pred, TV.width, TV.length);
     
     if ~obca_mpc_safety && yield
         % Compute the distance threshold for applying braking assuming max
@@ -289,17 +305,13 @@ for i = 1:T-N
         u_ws = zeros(n_u, N);
         u_prev = zeros(n_u, 1);
     else
-%         z_ws = z_preds(:,:,i-1);
-%         u_ws = u_preds(:,:,i-1);
         z_ws = [z_preds(:,2:end,i-1) EV_dynamics.f_dt(z_preds(:,end,i-1), u_preds(:,end,i-1))];
         u_ws = [u_preds(:,2:end,i-1) u_preds(:,end,i-1)];
         u_prev = u_traj(:,i-1);
     end
     
     obca_mpc_ebrake = false;
-    status_ws = [];
     status_sol = [];
-
     [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
     if status_ws.success
         ws_solve_times(i) = status_ws.solve_time;
@@ -309,19 +321,19 @@ for i = 1:T-N
     if ~status_ws.success || ~status_sol.success
         if safety(i-1)
             obca_mpc_safety = true;
-            fprintf('HOBCA not feasible, maintaining the safety control\n')
+            fprintf('Strategy OBCA not feasible, maintaining the safety control\n')
         else
             % If OBCA MPC is infeasible, activate ebrake controller
             obca_mpc_ebrake = true;
-            fprintf('HOBCA not feasible, activating emergency brake\n')
+            fprintf('Strategy OBCA not feasible, activating emergency brake\n')
         end
     else
         opt_solve_times(i) = status_sol.solve_time;
     end
     
     if obca_mpc_safety
-        obca_safety_control = obca_safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
-        [u_safe, obca_safety_control] = obca_safety_control.solve(z_traj(:,i), TV_pred, u_prev);
+        safety_control = safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
+        [u_safe, safety_control] = safety_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume safety control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_safe zeros(n_u, N-1)];
@@ -332,7 +344,7 @@ for i = 1:T-N
         end
         fprintf('Applying safety control\n')
     elseif obca_mpc_ebrake
-        [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(z_traj(:,i), TV_pred, EV.inputs(:,end));
+        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, EV.inputs(:,end));
         % Assume ebrake control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_ebrake zeros(n_u, N-1)];
@@ -374,8 +386,10 @@ for i = 1:T-N
     sol_stats{i} = status_sol;
 end
 
-filename = sprintf('../data/casadi_HppOBCA_Exp%d_%s.mat', exp_num, datestr(now,'yyyy-mm-dd_HH-MM'));
-save(filename, 'exp_params', 'OEV', 'TV', ...
+fprintf('\n=================== Complete ==================\n')
+fprintf('Output log saved in: %s.txt, data saved in: %s.mat\n', filename, filename)
+
+save(sprintf('../data/%s.mat', filename), 'exp_params', 'OEV', 'TV', ...
     'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', ...
     'scores', 'strategy_idxs', 'strategy_locks', 'hyps', 'collide', 'safety', 'ebrake', ...
     'ws_solve_times', 'opt_solve_times', 'total_times')

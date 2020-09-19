@@ -106,8 +106,8 @@ classdef hpp_obca_controller_casadi
                 for i = 1:self.n_obs
                     % Set up placeholder variables for obstacle description
                     % (polytopes)
-                    self.obs_ws_ph{i,k}.A = self.opti_ws.parameter(self.n_ineq, self.d_ineq);
-                    self.obs_ws_ph{i,k}.b = self.opti_ws.parameter(self.n_ineq);
+                    self.obs_ws_ph{i,k}.A = self.opti_ws.parameter(self.n_ineq(i), self.d_ineq);
+                    self.obs_ws_ph{i,k}.b = self.opti_ws.parameter(self.n_ineq(i));
 
                     self.opti_ws.subject_to(-dot(self.EV_g, self.mu_ws{i}(:,k)) + ...
                         dot(mtimes(self.obs_ws_ph{i,k}.A, t_ws)-self.obs_ws_ph{i,k}.b, self.lambda_ws{i}(:,k)) == self.d_ws{i}(k));
@@ -144,8 +144,8 @@ classdef hpp_obca_controller_casadi
             
             for i = 1:self.n_obs
                 % Set up dual variables for each obstacle
-                self.lambda{i} = self.opti.variable(self.n_ineq, self.N);
-                self.mu{i} = self.opti.variable(self.n_ineq, self.N);
+                self.lambda{i} = self.opti.variable(self.n_ineq(i), self.N);
+                self.mu{i} = self.opti.variable(self.m_ineq, self.N);
                 
                 % Positivity constraints on dual variables (:) vectorizes the variable
                 self.opti.subject_to(self.lambda{i}(:) >= 0);
@@ -185,8 +185,8 @@ classdef hpp_obca_controller_casadi
                 for i = 1:self.n_obs
                     % Set up placeholder variables for obstacle description
                     % (polytopes)
-                    self.obs_ph{i,k}.A = self.opti.parameter(self.n_ineq, self.d_ineq);
-                    self.obs_ph{i,k}.b = self.opti.parameter(self.n_ineq);
+                    self.obs_ph{i,k}.A = self.opti.parameter(self.n_ineq(i), self.d_ineq);
+                    self.obs_ph{i,k}.b = self.opti.parameter(self.n_ineq(i));
 
                     self.opti.subject_to(-dot(self.EV_g, self.mu{i}(:,k)) + ...
                         mtimes(transpose(mtimes(self.obs_ph{i,k}.A, t_opt)-self.obs_ph{i,k}.b), self.lambda{i}(:,k)) >= self.d_min);
@@ -210,7 +210,7 @@ classdef hpp_obca_controller_casadi
                         'mu_init', 1e-5, ...
                         'mu_min', 1e-15, ...
                         'barrier_tol_factor', 1, ...
-                        'print_level', 1, ...
+                        'print_level', 3, ...
                         'max_iter', 300);
             plugin_opts = struct('verbose', 0, 'print_time', 0, 'print_out', 0);
             self.opti.solver('ipopt', plugin_opts, solver_opts);
