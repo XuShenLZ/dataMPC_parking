@@ -13,6 +13,11 @@ function generate_forces_pro_opt_solver_coll_buf(params)
     du_l = params.du_l;
     du_u = params.du_u;
     EV_r = params.EV_r;
+    if isfield(params, 'lane_width')
+        lane_width = params.lane_width;
+    else
+        lane_width = nan;
+    end
     
     opt_model = {};
     
@@ -38,8 +43,13 @@ function generate_forces_pro_opt_solver_coll_buf(params)
         
         % [x_k, u_k, u_km1]
         nvar(i) = n_x + n_u + n_u;
-        ub{i} = [inf*ones(n_x,1); u_u; u_u];
-        lb{i} = [-inf*ones(n_x,1); u_l; u_l];
+        if ~isnan(lane_width)
+            ub{i} = [inf; lane_width/2; inf; inf; u_u; u_u];
+            lb{i} = [-inf; -lane_width/2; -inf; -inf; u_l; u_l];
+        else
+            ub{i} = [inf*ones(n_x,1); u_u; u_u];
+            lb{i} = [-inf*ones(n_x,1); u_l; u_l];
+        end
         
         % [coll_buf, du]
         nh(i) = n_obs + n_u;
@@ -68,8 +78,13 @@ function generate_forces_pro_opt_solver_coll_buf(params)
     
     % [x_k]
     nvar(opt_model.N) = n_x;
-    ub{opt_model.N} = [inf*ones(n_x,1)];
-    lb{opt_model.N} = [-inf*ones(n_x,1)];
+    if ~isnan(lane_width)
+        ub{opt_model.N} = [inf; lane_width/2; inf; inf];
+        lb{opt_model.N} = [-inf; -lane_width/2; -inf; -inf];
+    else
+        ub{opt_model.N} = [inf*ones(n_x,1)];
+        lb{opt_model.N} = [-inf*ones(n_x,1)];
+    end
     
     % [coll_buf]
     nh(opt_model.N) = n_obs;

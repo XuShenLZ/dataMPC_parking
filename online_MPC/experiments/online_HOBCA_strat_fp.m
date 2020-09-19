@@ -54,15 +54,18 @@ du_l = [-0.6; -5];
 d_min = 0.01; %0.001;
 
 n_obs = 1;
+n_ineq = [4];
+% n_obs = 3;
+% n_ineq = [4,1,1];
+d_ineq = 2;
+
 tv_obs = cell(n_obs, N+1);
-lane_width = 8;
-% P_u = Polyhedron('V', [-30, 10; 30, 10; -30, lane_width/2; 30, lane_width/2]);
-% P_l = Polyhedron('V', [-30, -10; 30, -10; -30, -lane_width/2; 30, -lane_width/2]);
+lane_width = 30;
 % for i = 1:N+1
-%     tv_obs{2,i}.A = P_u.A;
-%     tv_obs{2,i}.b = P_u.b;
-%     tv_obs{3,i}.A = P_l.A;
-%     tv_obs{3,i}.b = P_l.b;
+%     tv_obs{2,i}.A = [0, -1];
+%     tv_obs{2,i}.b = -lane_width/2;
+%     tv_obs{3,i}.A = [0, 1];
+%     tv_obs{3,i}.b = -lane_width/2;
 % end
 
 ws_params.name = 'FP_ws_solver_strat';
@@ -70,8 +73,8 @@ ws_params.N = N;
 ws_params.n_x = n_z;
 ws_params.n_u = n_u;
 ws_params.n_obs = n_obs;
-ws_params.n_ineq = 4;
-ws_params.d_ineq = 2;
+ws_params.n_ineq = n_ineq;
+ws_params.d_ineq = d_ineq;
 ws_params.G = EV.G;
 ws_params.g = EV.g;
 
@@ -80,8 +83,8 @@ opt_params.N = N;
 opt_params.n_x = n_z;
 opt_params.n_u = n_u;
 opt_params.n_obs = n_obs;
-opt_params.n_ineq = 4;
-opt_params.d_ineq = 2;
+opt_params.n_ineq = n_ineq;
+opt_params.d_ineq = d_ineq;
 opt_params.G = EV.G;
 opt_params.g = EV.g;
 opt_params.d_min = d_min;
@@ -361,7 +364,7 @@ for i = 1:T-N
         end
         fprintf('Applying safety control\n')
     elseif obca_mpc_ebrake
-        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, u_traj(:,i-1));
+        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume ebrake control is applied for one time step then no
         % control action is applied for rest of horizon
         u_pred = [u_ebrake zeros(n_u, N-1)];

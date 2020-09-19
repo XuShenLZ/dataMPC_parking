@@ -1,4 +1,4 @@
-classdef obca_controller_FP
+classdef hpp_obca_controller_FP_slack_hyp
 	properties
         ws_params;
         opt_params;
@@ -10,7 +10,7 @@ classdef obca_controller_FP
     end
 
 	methods
-		function self = obca_controller_FP(regen, ws_params, opt_params)
+		function self = hpp_obca_controller_FP_slack_hyp(regen, ws_params, opt_params)
             self.ws_params = ws_params;
             self.opt_params = opt_params;
             
@@ -24,7 +24,7 @@ classdef obca_controller_FP
             if ~exist(strcat(opt_params.name, '.m'), 'file') || regen
                 fprintf('===============================================\n')
                 fprintf('Generating forces pro opt solver: %s\n', strcat(opt_params.name, '.m'))
-                generate_forces_pro_opt_solver_naive(opt_params);
+                generate_forces_pro_opt_solver_slack_hyp(opt_params);
                 fprintf('\n')
             end
                 
@@ -33,7 +33,7 @@ classdef obca_controller_FP
         function [status, self] = solve_ws(self, z, u, obs)
             n_obs = self.ws_params.n_obs;
             n_ineq = self.ws_params.n_ineq;
-            m_ineq = size(self.ws_params.G,1);
+            m_ineq = self.ws_params.m_ineq;
             N_ineq = sum(n_ineq);
             M_ineq = n_obs*m_ineq;
             
@@ -96,7 +96,7 @@ classdef obca_controller_FP
 		function [z_pred, u_pred, status, self] = solve(self, z_s, u_prev, z_ref, obs)
             n_obs = self.opt_params.n_obs;
             n_ineq = self.opt_params.n_ineq;
-            m_ineq = size(self.opt_params.G,1);
+            m_ineq = self.ws_params.m_ineq;
             N_ineq = sum(n_ineq);
             M_ineq = n_obs*m_ineq;
             
@@ -116,9 +116,9 @@ classdef obca_controller_FP
                 params = [params; z_ref(:,k); obs_A; obs_b];
                     
                 if k == self.opt_params.N+1
-                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,self.opt_params.N); self.mu_ws(:,self.opt_params.N)];
+                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,self.opt_params.N); self.mu_ws(:,self.opt_params.N); zeros(n_obs,1)];
                 else
-                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k)];
+                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k); zeros(n_obs,1)];
                 end
             end
             

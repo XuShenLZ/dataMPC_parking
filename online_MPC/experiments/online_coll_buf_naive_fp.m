@@ -50,14 +50,6 @@ du_l = [-0.6; -5];
 n_obs = 1;
 tv_obs = cell(n_obs, N+1);
 lane_width = 8;
-% P_u = Polyhedron('V', [-30, 10; 30, 10; -30, lane_width/2; 30, lane_width/2]);
-% P_l = Polyhedron('V', [-30, -10; 30, -10; -30, -lane_width/2; 30, -lane_width/2]);
-% for i = 1:N+1
-%     tv_obs{2,i}.A = P_u.A;
-%     tv_obs{2,i}.b = P_u.b;
-%     tv_obs{3,i}.A = P_l.A;
-%     tv_obs{3,i}.b = P_l.b;
-% end
 
 opt_params.name = 'FP_opt_solver_naive_coll_buf';
 opt_params.N = N;
@@ -73,6 +65,7 @@ opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
 opt_params.EV_r = r;
+opt_params.lane_width = lane_width;
 
 if ~exist('forces_pro_gen', 'dir')
     mkdir('forces_pro_gen')

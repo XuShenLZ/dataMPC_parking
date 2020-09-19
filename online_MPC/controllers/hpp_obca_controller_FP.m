@@ -33,6 +33,9 @@ classdef hpp_obca_controller_FP
         function [status, self] = solve_ws(self, z, u, obs)
             n_obs = self.ws_params.n_obs;
             n_ineq = self.ws_params.n_ineq;
+            m_ineq = size(self.ws_params.G,1);
+            N_ineq = sum(n_ineq);
+            M_ineq = n_obs*m_ineq;
             
             self.lambda_ws = nan;
             self.mu_ws = nan;
@@ -43,7 +46,7 @@ classdef hpp_obca_controller_FP
             x0 = [];
             params = [];
             for k = 1:self.ws_params.N+1
-                x0 = [x0; zeros(n_obs*n_ineq+n_obs*n_ineq+n_obs,1)];
+                x0 = [x0; zeros(N_ineq+M_ineq+n_obs,1)];
                 obs_A = [];
                 obs_b = [];
                 for i = 1:n_obs
@@ -66,13 +69,15 @@ classdef hpp_obca_controller_FP
                     status.return_status = 'Successfully Solved';
                     status.solve_time = info.solvetime;
                     
-                    l_ws = zeros(n_obs*n_ineq, self.ws_params.N);
-                    m_ws = zeros(n_obs*n_ineq, self.ws_params.N);  
+                    l_ws = zeros(N_ineq, self.ws_params.N);
+                    m_ws = zeros(M_ineq, self.ws_params.N);  
                     for k = 1:self.ws_params.N
                         sol = output.(['x',sprintf('%02d', k)]);
+                        j = 0;
                         for i = 1:n_obs
-                            l_ws((i-1)*n_ineq+1:i*n_ineq,k) = sol((i-1)*n_ineq+1:i*n_ineq);
-                            m_ws((i-1)*n_ineq+1:i*n_ineq,k) = sol(n_obs*n_ineq+(i-1)*n_ineq+1:n_obs*n_ineq+i*n_ineq);
+                            l_ws(j+1:j+n_ineq(i),k) = sol(j+1:j+n_ineq(i));
+                            m_ws((i-1)*m_ineq+1:i*m_ineq,k) = sol(N_ineq+(i-1)*m_ineq+1:N_ineq+i*m_ineq);
+                            j = j + n_ineq(i);
                         end
                     end
                     self.lambda_ws = l_ws;
@@ -91,6 +96,10 @@ classdef hpp_obca_controller_FP
 		function [z_pred, u_pred, status, self] = solve(self, z_s, u_prev, z_ref, obs, hyp)
             n_obs = self.opt_params.n_obs;
             n_ineq = self.opt_params.n_ineq;
+            m_ineq = size(self.opt_params.G,1);
+            N_ineq = sum(n_ineq);
+            M_ineq = n_obs*m_ineq;
+            
             n_x = self.opt_params.n_x;
             n_u = self.opt_params.n_u;
             
@@ -143,7 +152,7 @@ classdef hpp_obca_controller_FP
                 for k = 1:self.ws_params.N
                     sol = output.(['x',sprintf('%02d', k)]);
                     z_pred(:,k) = sol(1:n_x);
-                    u_pred(:,k) = sol(n_x+n_obs*n_ineq+n_obs*n_ineq+1:n_x+n_obs*n_ineq+n_obs*n_ineq+n_u);
+                    u_pred(:,k) = sol(n_x+N_ineq+M_ineq+1:n_x+N_ineq+M_ineq+n_u);
                 end
                 sol = output.(['x',sprintf('%02d', self.ws_params.N+1)]);
                 z_pred(:,self.ws_params.N+1) = sol(1:n_x);

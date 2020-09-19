@@ -15,6 +15,7 @@ classdef hpp_obca_controller_casadi
         n_obs;
         n_ineq;
         d_ineq;
+        m_ineq;
 
         EV_G;
         EV_g;
@@ -56,6 +57,7 @@ classdef hpp_obca_controller_casadi
             self.n_obs = params.n_obs;
             self.n_ineq = params.n_ineq;
             self.d_ineq = params.d_ineq;
+            self.m_ineq = size(params.G,1);
             self.EV_G = params.G;
             self.EV_g = params.g;
             self.d_min = params.d_min;
@@ -79,8 +81,8 @@ classdef hpp_obca_controller_casadi
             
             for i = 1:self.n_obs
                 % Set up warm start dual variables for each obstacle
-                self.lambda_ws{i} = self.opti_ws.variable(self.n_ineq, self.N);
-                self.mu_ws{i} = self.opti_ws.variable(self.n_ineq, self.N);
+                self.lambda_ws{i} = self.opti_ws.variable(self.n_ineq(i), self.N);
+                self.mu_ws{i} = self.opti_ws.variable(self.m_ineq, self.N);
                 self.d_ws{i} = self.opti_ws.variable(1, self.N);
                 
                 % (:) vectorizes the variable
