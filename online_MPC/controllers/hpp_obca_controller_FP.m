@@ -27,7 +27,6 @@ classdef hpp_obca_controller_FP
                 generate_forces_pro_opt_solver(opt_params);
                 fprintf('\n')
             end
-                
         end
         
         function [status, self] = solve_ws(self, z, u, obs)

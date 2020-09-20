@@ -111,7 +111,7 @@ function generate_forces_pro_opt_solver(params)
 %     opt_codeopts.maxit = 300;
     opt_codeopts.overwrite = 1;
     opt_codeopts.printlevel = 2;
-    opt_codeopts.optlevel = 3;
+    opt_codeopts.optlevel = params.optlevel;
     opt_codeopts.BuildSimulinkBlock = 0;
 
     opt_codeopts.nlp.ad_tool = 'casadi-351';
@@ -127,9 +127,19 @@ function generate_forces_pro_opt_solver(params)
 
 %     opt_codeopts.nlp.hessian_approximation = 'gauss-newton';
 %     opt_codeopts.nlp.BarrStrat = 'monotone';
-
-%     opt_codeopts.linesearch.minstep = 1e-8;
-%     opt_codeopts.linesearch.maxstep = 0.9;
+    
+    if isfield(params, 'factor_aff')
+        opt_codeopts.linesearch.factor_aff = params.factor_aff;
+    end
+    if isfield(params, 'factor_cc')
+        opt_codeopts.linesearch.factor_cc = params.factor_cc;
+    end
+    if isfield(params, 'minstep')
+        opt_codeopts.linesearch.minstep = params.minstep;
+    end
+    if isfield(params, 'maxstep')
+        opt_codeopts.linesearch.maxstep = params.maxstep;
+    end
 
 %     opt_codeopts.nlp.reg_eta_dw = 1;
 %     opt_codeopts.nlp.reg_beta_dw = 10;
@@ -200,15 +210,18 @@ function opt_eq = eval_opt_eq(z, p)
     
     j = 0;
     opt_eq = dynamics.f_dt_aug(x, u);
+    obca = [];
     for i = 1:n_obs
         A = reshape(p(n_x+j*d_ineq+1:n_x+(j+n_ineq(i))*d_ineq), n_ineq(i), d_ineq);
         lambda = z(n_x+j+1:n_x+j+n_ineq(i));
         mu = z(n_x+N_ineq+(i-1)*m_ineq+1:n_x+N_ineq+i*m_ineq);
 
-        opt_eq = vertcat(opt_eq, mtimes(G', mu)+mtimes(transpose(mtimes(A, R_opt)), lambda));
+        obca = vertcat(obca, mtimes(G', mu)+mtimes(transpose(mtimes(A, R_opt)), lambda));
         
         j = j + n_ineq(i);
     end
+    
+    opt_eq = vertcat(opt_eq, obca);
 end
 
 % Equality constraints at last stage
@@ -222,15 +235,18 @@ function opt_eq = eval_opt_eq_Nm1(z, p)
     
     j = 0;
     opt_eq = dynamics.f_dt(x, u);
+    obca = [];
     for i = 1:n_obs
         A = reshape(p(n_x+j*d_ineq+1:n_x+(j+n_ineq(i))*d_ineq), n_ineq(i), d_ineq);
         lambda = z(n_x+j+1:n_x+j+n_ineq(i));
         mu = z(n_x+N_ineq+(i-1)*m_ineq+1:n_x+N_ineq+i*m_ineq);
         
-        opt_eq = vertcat(opt_eq, mtimes(G', mu)+mtimes(transpose(mtimes(A, R_opt)), lambda));
+        obca = vertcat(obca, mtimes(G', mu)+mtimes(transpose(mtimes(A, R_opt)), lambda));
         
         j = j + n_ineq(i);
     end
+    
+    opt_eq = vertcat(opt_eq, obca);
 end
 
 % Inequality constraints at each stage
@@ -245,7 +261,8 @@ function opt_ineq = eval_opt_ineq(z, p)
     
     t_opt = z(1:2);
     
-    opt_ineq = [];
+    obca_d = [];
+    obca_norm = [];
     j = 0;
     for i = 1:n_obs
         A = reshape(p(n_x+j*d_ineq+1:n_x+(j+n_ineq(i))*d_ineq), n_ineq(i), d_ineq);
@@ -253,12 +270,15 @@ function opt_ineq = eval_opt_ineq(z, p)
         lambda = z(n_x+j+1:n_x+j+n_ineq(i));
         mu = z(n_x+N_ineq+(i-1)*m_ineq+1:n_x+N_ineq+i*m_ineq);
         
-        opt_ineq = vertcat(opt_ineq, -dot(g,mu)+mtimes(transpose(mtimes(A,t_opt)-b),lambda));
-        opt_ineq = vertcat(opt_ineq, dot(mtimes(transpose(A),lambda), mtimes(transpose(A),lambda))); 
+        obca_d = vertcat(obca_d, -dot(g,mu)+dot(mtimes(A,t_opt)-b,lambda));
+        obca_norm = vertcat(obca_norm, dot(mtimes(transpose(A),lambda), mtimes(transpose(A),lambda))); 
         
         j = j + n_ineq(i);
     end
-
+    
+    opt_ineq = [];
+    opt_ineq = vertcat(opt_ineq, obca_d);
+    opt_ineq = vertcat(opt_ineq, obca_norm);
     opt_ineq = vertcat(opt_ineq, dot(hyp_w, x) - hyp_b);
     opt_ineq = vertcat(opt_ineq, u-u_p);
 end
@@ -273,7 +293,8 @@ function opt_ineq = eval_opt_ineq_N(z, p)
     
     t_opt = z(1:2);
     
-    opt_ineq = [];
+    obca_d = [];
+    obca_norm = [];
     j = 0;
     for i = 1:n_obs
         A = reshape(p(n_x+j*d_ineq+1:n_x+(j+n_ineq(i))*d_ineq), n_ineq(i), d_ineq);
@@ -281,11 +302,14 @@ function opt_ineq = eval_opt_ineq_N(z, p)
         lambda = z(n_x+j+1:n_x+j+n_ineq(i));
         mu = z(n_x+N_ineq+(i-1)*m_ineq+1:n_x+N_ineq+i*m_ineq);
         
-        opt_ineq = vertcat(opt_ineq, -dot(g, mu)+mtimes(transpose(mtimes(A,t_opt)-b),lambda));
-        opt_ineq = vertcat(opt_ineq, dot(mtimes(transpose(A), lambda), mtimes(transpose(A),lambda)));
+        obca_d = vertcat(obca_d, -dot(g, mu)+dot(mtimes(A,t_opt)-b,lambda));
+        obca_norm = vertcat(obca_norm, dot(mtimes(transpose(A), lambda), mtimes(transpose(A),lambda)));
         
         j = j + n_ineq(i);
     end
     
+    opt_ineq = [];
+    opt_ineq = vertcat(opt_ineq, obca_d);
+    opt_ineq = vertcat(opt_ineq, obca_norm);
     opt_ineq = vertcat(opt_ineq, dot(hyp_w, x) - hyp_b);
 end

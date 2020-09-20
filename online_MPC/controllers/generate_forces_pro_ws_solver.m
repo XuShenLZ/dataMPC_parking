@@ -42,7 +42,7 @@ function generate_forces_pro_ws_solver(params)
 %     ws_codeopts.maxit = 1000;
     ws_codeopts.overwrite = 1;
     ws_codeopts.printlevel = 2;
-    ws_codeopts.optlevel = 3;
+    ws_codeopts.optlevel = params.optlevel;
     ws_codeopts.BuildSimulinkBlock = 0;
     ws_codeopts.nlp.linear_solver = 'symm_indefinite';
     ws_codeopts.nlp.ad_tool = 'casadi-351';
@@ -63,19 +63,25 @@ function ws_eq = eval_ws_eq(z, p)
     t_ws = p(1:2);
     R_ws = [cos(p(3)), -sin(p(3)); sin(p(3)), cos(p(3))];
 
-    ws_eq = [];
+    obca_d = [];
+    obca = [];
     j = 0;
     for i = 1:n_obs
-        A = reshape(p(n_x+j*d_ineq+1:n_x+j*d_ineq+n_ineq(i)*d_ineq), n_ineq(i), d_ineq);
+        A = reshape(p(n_x+j*d_ineq+1:n_x+(j+n_ineq(i))*d_ineq), n_ineq(i), d_ineq);
         b = p(n_x+N_ineq*d_ineq+j+1:n_x+N_ineq*d_ineq+j+n_ineq(i));
         lambda = z(j+1:j+n_ineq(i));
         mu = z(N_ineq+(i-1)*m_ineq+1:N_ineq+i*m_ineq);
         d = z(N_ineq+M_ineq+i);
-        ws_eq = vertcat(ws_eq, -dot(g, mu)+dot(mtimes(A, t_ws)-b, lambda)-d);
-        ws_eq = vertcat(ws_eq, mtimes(G', mu)+mtimes(transpose(mtimes(A, R_ws)), lambda));
+        
+        obca_d = vertcat(obca_d, -dot(g, mu)+dot(mtimes(A, t_ws)-b, lambda)-d);
+        obca = vertcat(obca, mtimes(G', mu)+mtimes(transpose(mtimes(A, R_ws)), lambda));
         
         j = j + n_ineq(i);
     end
+    
+    ws_eq = [];
+    ws_eq = vertcat(ws_eq, obca_d);
+    ws_eq = vertcat(ws_eq, obca);
 end
 
 function ws_ineq = eval_ws_ineq(z, p)
@@ -84,7 +90,7 @@ function ws_ineq = eval_ws_ineq(z, p)
     ws_ineq = [];
     j = 0;
     for i = 1:n_obs
-        A = reshape(p(n_x+j*d_ineq+1:n_x+j*d_ineq+n_ineq(i)*d_ineq), n_ineq(i), d_ineq);
+        A = reshape(p(n_x+j*d_ineq+1:n_x+(j+n_ineq(i))*d_ineq), n_ineq(i), d_ineq);
         lambda = z(j+1:j+n_ineq(i));
         ws_ineq = vertcat(ws_ineq, dot(mtimes(transpose(A),lambda), mtimes(transpose(A),lambda)));
         

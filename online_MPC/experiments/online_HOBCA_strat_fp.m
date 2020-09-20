@@ -6,7 +6,7 @@ pathsetup();
 
 %% Load testing data
 % uiopen('load')
-exp_num = 1;
+exp_num = 4;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -60,7 +60,7 @@ n_ineq = [4,1,1];
 d_ineq = 2;
 
 tv_obs = cell(n_obs, N+1);
-lane_width = 30;
+lane_width = 8;
 for i = 1:N+1
     tv_obs{2,i}.A = [0, -1];
     tv_obs{2,i}.b = -lane_width/2;
@@ -77,6 +77,7 @@ ws_params.n_ineq = n_ineq;
 ws_params.d_ineq = d_ineq;
 ws_params.G = EV.G;
 ws_params.g = EV.g;
+ws_params.optlevel = 3;
 
 opt_params.name = 'FP_opt_solver_strat';
 opt_params.N = N;
@@ -96,6 +97,7 @@ opt_params.du_u = du_u;
 opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
+opt_params.optlevel = 3;
 
 if ~exist('forces_pro_gen', 'dir')
     mkdir('forces_pro_gen')
