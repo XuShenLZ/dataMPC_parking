@@ -124,9 +124,6 @@ function generate_forces_pro_opt_solver(params)
     opt_codeopts.accuracy.eq = 1e-3;    % infinity norm of residual for equalities
     opt_codeopts.accuracy.mu = 1e-3;    % absolute duality gap
     opt_codeopts.accuracy.rdgap = 1e-3; % relative duality gap := (pobj-dobj)/pobj
-
-%     opt_codeopts.nlp.hessian_approximation = 'gauss-newton';
-%     opt_codeopts.nlp.BarrStrat = 'monotone';
     
     if isfield(params, 'factor_aff')
         opt_codeopts.linesearch.factor_aff = params.factor_aff;
@@ -140,21 +137,6 @@ function generate_forces_pro_opt_solver(params)
     if isfield(params, 'maxstep')
         opt_codeopts.linesearch.maxstep = params.maxstep;
     end
-
-%     opt_codeopts.nlp.reg_eta_dw = 1;
-%     opt_codeopts.nlp.reg_beta_dw = 10;
-%     opt_codeopts.nlp.reg_min_dw = 1;
-%     opt_codeopts.nlp.reg_gamma_dw = 3;
-% 
-%     opt_codeopts.nlp.reg_eta_dc = 1;
-%     opt_codeopts.nlp.reg_beta_dc = 10;
-%     opt_codeopts.nlp.reg_min_dc = 1;
-%     opt_codeopts.nlp.reg_gamma_dc = 3;
-    
-%     opt_codeopts.regularize.epsilon = 1E-12; % (for Hessian approx.)
-%     opt_codeopts.regularize.delta = 4E-6; % (for Hessian approx.)
-%     opt_codeopts.regularize.epsilon2 = 1E-14; % (for Normal eqs.)
-%     opt_codeopts.regularize.delta2 = 1E-14; % (for Normal eqs.)
 
     FORCES_NLP(opt_model, opt_codeopts);
 end

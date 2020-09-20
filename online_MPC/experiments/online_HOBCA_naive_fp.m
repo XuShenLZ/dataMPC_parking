@@ -38,7 +38,6 @@ EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
 % Instantiate obca controller
 % Q = diag([0.05 0.1 0.1 0.5]);
-% R = diag([0.01 0.01]);
 Q = diag([10 1 1 5]);
 R = diag([1 1]);
 
@@ -50,18 +49,20 @@ du_l = [-0.6; -5];
 d_min = 0.01;
 % d_min = 0.001;
 
-n_obs = 1;
-n_ineq = [4];
+% n_obs = 1;
+% n_ineq = [4];
+n_obs = 3;
+n_ineq = [4,1,1];
 d_ineq = 2;
 
 tv_obs = cell(n_obs, N+1);
 lane_width = 8;
-% for i = 1:N+1
-%     tv_obs{2,i}.A = [0; -1];
-%     tv_obs{2,i}.b = -lane_width/2;
-%     tv_obs{3,i}.A = [0; 1];
-%     tv_obs{3,i}.b = -lane_width/2;
-% end
+for i = 1:N+1
+    tv_obs{2,i}.A = [0; -1];
+    tv_obs{2,i}.b = -lane_width/2;
+    tv_obs{3,i}.A = [0; 1];
+    tv_obs{3,i}.b = -lane_width/2;
+end
 
 ws_params.name = 'FP_ws_solver_naive';
 ws_params.N = N;
@@ -72,6 +73,7 @@ ws_params.n_ineq = n_ineq;
 ws_params.d_ineq = d_ineq;
 ws_params.G = EV.G;
 ws_params.g = EV.g;
+ws_params.optlevel = 3;
 
 opt_params.name = 'FP_opt_solver_naive';
 opt_params.N = N;
@@ -91,12 +93,13 @@ opt_params.du_u = du_u;
 opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
+opt_params.optlevel = 3;
 
 if ~exist('forces_pro_gen', 'dir')
     mkdir('forces_pro_gen')
 end
 cd forces_pro_gen
-obca_controller = obca_controller_FP(true, ws_params, opt_params);
+obca_controller = obca_controller_FP(false, ws_params, opt_params);
 cd ..
 addpath('forces_pro_gen')
 
@@ -163,7 +166,7 @@ for i = 1:T-N
     z_ref = [z_traj(1,i)+[0:N]*dt*v_ref; zeros(1,N+1); zeros(1,N+1); v_ref*ones(1,N+1)]; 
     
     % Generate target vehicle obstacle descriptions
-    tv_obs = get_car_poly_obs(TV_pred, TV.width, TV.length);
+    tv_obs(1,:) = get_car_poly_obs(TV_pred, TV.width, TV.length);
 
     % HPP OBCA MPC
     % Initialize prediction guess for warm start
