@@ -12,6 +12,38 @@ function F = plotExp(dataname, plt_params)
 	d_lim = exp_params.controller.d_lim;
 	a_lim = exp_params.controller.a_lim;
     
+    % Default plot parameter values
+    if isfield(plt_params, 'plt_hyp')
+        plt_hyp = plt_params.plt_hyp;
+    else
+        plt_hyp = false;
+    end
+    if isfield(plt_params, 'plt_ref')
+        plt_ref = plt_params.plt_ref;
+    else
+        plt_ref = false;
+    end
+    if isfield(plt_params, 'plt_sol')
+        plt_sol = plt_params.plt_sol;
+    else
+        plt_sol = false;
+    end
+    if isfield(plt_params, 'plt_preds')
+        plt_preds = plt_params.plt_preds;
+    else
+        plt_preds = true;
+    end
+    if isfield(plt_params, 'plt_tv_preds')
+        plt_tv_preds = plt_params.plt_tv_preds;
+    else
+        plt_tv_preds = false;
+    end
+    if isfield(plt_params, 'plt_col_buf')
+        plt_col_buf = plt_params.plt_col_buf;
+    else
+        plt_col_buf = false;
+    end
+    
     OEV_plt_opts.circle = false;
 	OEV_plt_opts.frame = false;
 	OEV_plt_opts.color = 'g';
@@ -178,7 +210,7 @@ function F = plotExp(dataname, plt_params)
 	    t_h_feas = text(-29, 7, sprintf('HOBCA Online MPC (ws): %s, (sol): %s', ws_stat, sol_stat), 'color', 'b', 'interpreter', 'none');
 	    t_h_safe = text(-29, 5, sprintf('Safety: %s, E-Brake: %s', s_h, e_h), 'color', 'b');
         
-        if plt_params.plt_sol
+        if plt_sol
             [p_OEV, l_OEV] = plotCar(OEV.traj(1,i), OEV.traj(2,i), OEV.traj(3,i), OEV.width, OEV.length, OEV_plt_opts);
         end
         [p_EV, l_EV] = plotCar(z_traj(1,i), z_traj(2,i), z_traj(3,i), OEV.width, OEV.length, EV_plt_opts);
@@ -188,25 +220,29 @@ function F = plotExp(dataname, plt_params)
         
         % Plot TV over horizon and predictions
         for j = 1:N+1
-	        if j == 1
+            if j == 1
 	            TV_plt_opts.alpha = 0.5;
 	            TV_plt_opts.frame = true;
-                if plt_params.plt_col_buf
+                if plt_col_buf
                     TV_plt_opts.circle = true;
                 else
                     TV_plt_opts.circle = false;
                 end
-            else
+                
+                [p, l] = plotCar(TV.x(i+j-1), TV.y(i+j-1), TV.heading(i+j-1), TV.width, TV.length, TV_plt_opts);
+                p_TV = [p_TV, p];
+                l_TV = [l_TV, l];
+            elseif plt_tv_preds
                 TV_plt_opts.circle = false;
 	            TV_plt_opts.alpha = 0;
 	            TV_plt_opts.frame = false;
-	        end
+                
+                [p, l] = plotCar(TV.x(i+j-1), TV.y(i+j-1), TV.heading(i+j-1), TV.width, TV.length, TV_plt_opts);
+                p_TV = [p_TV, p];
+                l_TV = [l_TV, l];
+            end
 	        
-	        [p, l] = plotCar(TV.x(i+j-1), TV.y(i+j-1), TV.heading(i+j-1), TV.width, TV.length, TV_plt_opts);
-	        p_TV = [p_TV, p];
-	        l_TV = [l_TV, l];
-	        
-            if plt_params.plt_hyp && exist('hyps', 'var')
+            if plt_hyp && exist('hyps', 'var')
                 hyp = hyps{i};
                 if ~isnan(hyp{j}.pos)
                     coll_bound_global = rot(TV.heading(i+j-1))*[coll_bound_x; coll_bound_y] + [TV.x(i+j-1); TV.y(i+j-1)];
@@ -223,11 +259,11 @@ function F = plotExp(dataname, plt_params)
                 end
             end
             
-            if plt_params.plt_ref
+            if plt_ref
                 l_TV = [l_TV plot(z_ref(1,j), z_ref(2,j), '.', 'color', cmap(j,:), 'markersize', 10)];
             end
             
-            if plt_params.plt_preds
+            if plt_preds
                 if exist('safety', 'var')
                     if ~safety(i)
                         l_TV = [l_TV plot(z_pred(1,j), z_pred(2,j), 'd', 'color', cmap(j,:))];
