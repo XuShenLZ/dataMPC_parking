@@ -4,7 +4,7 @@ clc
 
 pathsetup();
 
-all_nums = 486;
+all_nums = 1;
 
 all_col = zeros(1, all_nums);
 all_safe = zeros(1, all_nums);
@@ -55,10 +55,12 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	N = 20; % Prediction horizon
 	dt = EV.dt; % Time step
 	T = 1500; % Maxmium Exp Time
+	T_tv = length(TV.t);
 	x_max = 30; % The right most x coordinate
 	v_ref = EV.ref_v; % Reference velocity
 	y_ref = EV.ref_y; % Reference y
 	r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
+	confidence_thresh = 0.55;
 
 	% Extend TV traj to remain staionary after parked
 	TV.x(end+1:T) = TV.x(end);
@@ -201,6 +203,7 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	exp_params.filter.V = V;
 	exp_params.filter.W = W;
 	exp_params.filter.Pm = Pm;
+	exp_params.confidence_thresh = confidence_thresh;
 
 	ws_solve_times = zeros(T-N, 1);
 	opt_solve_times = zeros(T-N, 1);
@@ -250,7 +253,7 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	    % Generate reference trajectory
 	    yield = false;
 	%     if all( abs(rel_state(1, :)) > 10 )
-	    if all( abs(rel_state(1, :)) > 20 ) || rel_state(1,1) < -r
+	    if all( abs(rel_state(1, :)) > 20 ) || rel_state(1,1) < -r || i > T_tv - N
 	        % If it is still far away
 	        EV_x_ref = EV_x + [0:N]*dt*v_ref;
 	        EV_v_ref = v_ref*ones(1, N+1);
@@ -261,7 +264,7 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	        if rel_state(1,1) < -r
 	            % fprintf('EV has passed TV, tracking nominal reference velocity\n')
 	        end
-	    elseif max(score) > 0.55 && max_idx < 3 || strategy_lock
+	    elseif max(score) > confidence_thresh && max_idx < 3 || strategy_lock
 	        % If strategy is not yield discount reference velocity based on max
 	        % likelihood
 	        % EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
@@ -298,7 +301,7 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	    end
 
 	    % Lock the strategy if more than 3 steps are colliding
-	    if sum(horizon_collision) >= 3 && max(score) > 0.55 || strategy_lock
+	    if (sum(horizon_collision) >= 3 && max(score) > confidence_thresh && max_idx < 3) || strategy_lock
 	        strategy_idx = last_idx;
 	        strategy_lock = true;
 	    else
