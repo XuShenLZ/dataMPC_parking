@@ -6,7 +6,7 @@ pathsetup();
 
 %% Load testing data
 % uiopen('load')
-exp_num = 4;
+exp_num = 12;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -31,6 +31,7 @@ T = length(TV.t); % Length of data
 v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
+confidence_thresh = 0.55;
 
 n_z = 4;
 n_u = 2;
@@ -164,6 +165,7 @@ exp_params.dynamics.n_u = n_u;
 exp_params.filter.V = V;
 exp_params.filter.W = W;
 exp_params.filter.Pm = Pm;
+exp_params.confidence_thresh = confidence_thresh;
 
 ws_solve_times = zeros(T-N, 1);
 opt_solve_times = zeros(T-N, 1);
@@ -223,7 +225,7 @@ for i = 1:T-N
         if rel_state(1,1) < -r
             fprintf('EV has passed TV, tracking nominal reference velocity\n')
         end
-    elseif max(score) > 0.55 && max_idx < 3 || strategy_lock
+    elseif max(score) > confidence_thresh && max_idx < 3 || strategy_lock
         % If strategy is not yield discount reference velocity based on max
         % likelihood
         % EV_x_ref = EV_x + [0:N]*dt*v_ref*max(score);
@@ -260,7 +262,7 @@ for i = 1:T-N
     end
 
     % Lock the strategy if more than 3 steps are colliding
-    if sum(horizon_collision) >= 3 && max(score) > 0.55 || strategy_lock
+    if (sum(horizon_collision) >= 3 && max(score) > confidence_thresh && max_idx < 3) || strategy_lock
         strategy_idx = last_idx;
         strategy_lock = true;
     else
