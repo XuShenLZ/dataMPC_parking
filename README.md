@@ -13,6 +13,10 @@ Edward Zhu, edward_zhu@berkeley.edu
 5. Forces Pro (For fast implementation)
 
 ## Change log
+### 09/21/2020
+1. Added up and bottom constraints;
+2. Datagen code for `hobca_strat` and `hobca_naive` are finished.
+
 ### 09/16/2020
 1. Fixed bug in `./online_MPC/dynamics/bike_dynamics_rk4.m`
 2. Added forces pro implementations of naive receding horizon MPC and collision buffer MPC
