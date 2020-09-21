@@ -154,7 +154,7 @@ function F = plotExp(dataname, plt_params)
             addpoints(R_line, i, score(2));
             addpoints(Y_line, i, score(3));
             
-            l_s = plot(i, max(score), 'ko');
+            l_s = plot(i, max(score), 'ko', 'DisplayName', 'Max');
             hold on
             t_s = text(i, max(score)+0.05, sprintf('%g', max(score)));
         end
