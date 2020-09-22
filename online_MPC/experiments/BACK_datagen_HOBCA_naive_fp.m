@@ -148,6 +148,7 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	% Instantiate safety controller
 	d_lim = [u_l(1), u_u(1)];
 	a_lim = [u_l(2), u_u(2)];
+	safety_control = safety_controller(dt, d_lim, a_lim, du_u);
 	ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 	% Make a copy of EV as the optimal EV, and naive EV
@@ -168,6 +169,7 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	sol_stats = cell(T-N, 1);
 
 	collide = zeros(T-N, 1);
+	safety = zeros(T-N, 1);
 	ebrake = zeros(T-N, 1);
 
 	exp_params.exp_num = exp_num;
@@ -226,32 +228,57 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	    
 	    % Naive controller
 	    obca_mpc_ebrake = false;
+	    obca_mpc_safety = false;
 	    status_sol = [];
 	    [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
 	    if status_ws.success
 	        ws_solve_times(i) = status_ws.solve_time;
-	        [z_pred, u_pred, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs);
+	        [z_obca, u_obca, status_sol, obca_controller] = obca_controller.solve(z_traj(:,i), u_prev, z_ref, tv_obs);
 	    end
 	    
 	    if ~status_ws.success || ~status_sol.success
 	        % If OBCA MPC is infeasible, activate ebrake controller
-	        obca_mpc_ebrake = true;
-	        % fprintf('Naive OBCA MPC not feasible, activating emergency brake\n')
+	        obca_mpc_safety = true;
+	        fprintf('Naive OBCA MPC not feasible, activating safety controller\n')
 	    else
 	        opt_solve_times(i) = status_sol.solve_time;
 	    end
 	    
-	    if obca_mpc_ebrake
-	        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, u_prev);
-	        % Assume ebrake control is applied for one time step then no
-	        % control action is applied for rest of horizon
-	        u_pred = [u_ebrake zeros(n_u, N-1)];
-	        z_pred = [z_traj(:,i) zeros(n_z, N)];
-	        % Simulate this policy
-	        for j = 1:N
-	            z_pred(:,j+1) = EV_dynamics.f_dt(z_pred(:,j), u_pred(:,j));
+	    if obca_mpc_safety
+	        safety_control = safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
+	        [u_safe, safety_control] = safety_control.solve(z_traj(:,i), TV_pred, u_prev);
+	        
+	        z_next = EV_dynamics.f_dt(z_traj(:,i), u_safe);
+
+	        actual_collision = check_current_collision(z_next(1:3), TV_pred(1:3, 2), EV);
+
+	        if ~actual_collision
+	            % Assume safety control is applied for one time step then no
+	            % control action is applied for rest of horizon
+	            u_pred = [u_safe zeros(n_u, N-1)];
+	            z_pred = [z_traj(:,i) zeros(n_z, N)];
+	            % Simulate this policy
+	            for j = 1:N
+	                z_pred(:,j+1) = EV_dynamics.f_dt(z_pred(:,j), u_pred(:,j));
+	            end
+
+	            fprintf('Applying safety control\n')
+	        else
+	            obca_mpc_ebrake = true;
+	            [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, u_prev);
+	            % Assume ebrake control is applied for one time step then no
+	            % control action is applied for rest of horizon
+	            u_pred = [u_ebrake zeros(n_u, N-1)];
+	            z_pred = [z_traj(:,i) zeros(n_z, N)];
+	            % Simulate this policy
+	            for j = 1:N
+	                z_pred(:,j+1) = EV_dynamics.f_dt(z_pred(:,j), u_pred(:,j));
+	            end
+	            fprintf('Applying ebrake control\n')
 	        end
-	        % fprintf('Applying ebrake control\n')
+	    else
+	        z_pred = z_obca;
+	        u_pred = u_obca;
 	    end
 	    
 	    % Simulate system forward using first predicted input
@@ -268,7 +295,8 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	    
 	    % Check the collision at the current time step
 	    collide(i) = check_current_collision(z_traj(1:3, i), TV_pred(1:3, 1), EV);
-
+	    
+	    safety(i) = obca_mpc_safety;
 	    ebrake(i) = obca_mpc_ebrake;
 	    
 	    ws_stats{i} = status_ws;
@@ -293,18 +321,19 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	z_refs(:, :, T_final+1:end) = [];
 
 	collide(T_final+1:end) = [];
+	safety(T_final+1:end) = [];
 	ebrake(T_final+1:end) = [];
 
 	ws_stats(T_final+1:end) = [];
 	sol_stats(T_final+1:end) = [];
 
 	col = any(collide);
-	safe = false;
+	safe = any(safety);
 	eb = any(ebrake);
 
 	filename = sprintf('../datagen/hobca_naive_fp_Exp%d_Col%d_Safe%d_Eb%d_%s.mat', exp_num, col, safe, eb, datestr(now,'yyyy-mm-dd_HH-MM'));
 	save(filename, 'exp_params', 'OEV', 'TV', ...
-	    'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'ebrake', ...
+	    'z_traj', 'u_traj', 'z_preds', 'u_preds', 'z_refs', 'ws_stats', 'sol_stats', 'collide', 'safety', 'ebrake', ...
 	    'ws_solve_times', 'opt_solve_times', 'total_times')
 
 	fprintf('Exp_num %d is done. Elapsed time is %d seconds.\n', exp_num, toc(tExp))

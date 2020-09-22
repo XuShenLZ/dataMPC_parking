@@ -4,7 +4,7 @@ clc
 
 pathsetup();
 
-all_nums = 1;
+all_nums = 486;
 
 all_col = zeros(1, all_nums);
 all_safe = zeros(1, all_nums);
@@ -31,7 +31,7 @@ filename = sprintf('../datagen/0STATS_hobca_strat_%s.mat', datestr(now,'yyyy-mm-
 save(filename, 'all_col', 'all_safe', 'all_eb', ...
     'unknown_error', 'all_times')
 
-fprintf('Datagen of HOBCA_strat completed.\n')
+fprintf('Stats saved as: %s, datagen of HOBCA_strat completed.\n', filename)
 
 
 %% HOBCA_par: function description
@@ -436,7 +436,7 @@ function [col, safe, eb, T_final] = HOBCA_par(exp_num)
 	    hyps{i} = hyp;
 	    
 	    % Check the collision at the current time step
-	    collide(i) = check_current_collision(z_traj, EV, TV, i);
+	    collide(i) = check_current_collision(z_traj(1:3, i), TV_pred(1:3, 1), EV);
 
 	    safety(i) = obca_mpc_safety;
 	    ebrake(i) = obca_mpc_ebrake;

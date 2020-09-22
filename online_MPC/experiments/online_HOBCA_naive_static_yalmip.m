@@ -210,7 +210,7 @@ for i = 1:T-N
     z_refs(:,:,i) = z_ref;
 
     % Check the collision at the current time step
-    collide(i) = check_current_collision(z_traj, EV, TV, i);
+    collide(i) = check_current_collision(z_traj(1:3, i), TV_pred(1:3, 1), EV);
     ebrake(i) = obca_mpc_ebrake;
 
     ws_stats{i} = status_ws;

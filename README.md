@@ -13,6 +13,15 @@ Edward Zhu, edward_zhu@berkeley.edu
 5. Forces Pro (For fast implementation)
 
 ## Change log
+### 09/22/2020
+1. Have another flow of control logic (`./online_MPC/experiments/BACK_*`):
+	1. The score will influence the safety controller;
+	2. If the HOBCA is feasible, follow the mode given by score;
+	3. If HOBCA is infeasible, activate the safety controller too;
+	4. In safety controller, if backing up still lead to collision, activate emergency break (which is equivalent to collision here).
+2. Updated the input to `check_current_collision.m` function and its usage.
+3. Updated the `./online_MPC/experiments/datagen.m` to have simple evaluation too.
+
 ### 09/21/2020
 1. Added up and bottom constraints;
 2. Datagen code for `hobca_strat` and `hobca_naive` are finished.
