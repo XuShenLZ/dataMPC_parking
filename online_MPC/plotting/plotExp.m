@@ -1,5 +1,7 @@
 %% plotExp: plot the experiment process
 function F = plotExp(dataname, plt_params)
+    close all;
+    
 	load(dataname)
 
 	map_dim = [-30 30 -10 10];
@@ -287,12 +289,21 @@ function F = plotExp(dataname, plt_params)
     end
 
     if plt_params.mv_save
-		% Save Movie
-		if ~isfolder('../../movies/')
-		    mkdir('../../movies')
-		end
+        
+        if isfield(plt_params, 'mv_path')
+            if ~isfolder(plt_params.mv_path)
+                mkdir(plt_params.mv_path)
+            end
+            file = sprintf('%s.mp4', plt_params.mv_name);
+            path = plt_params.mv_path;
+        else
+            % Save Movie
+            if ~isfolder('../../movies/')
+                mkdir('../../movies')
+            end
 
-		[file,path] = uiputfile(sprintf('../../movies/%s.mp4', plt_params.mv_name));
+            [file,path] = uiputfile(sprintf('../../movies/%s.mp4', plt_params.mv_name));
+        end
 
 		v = VideoWriter([path, file], 'MPEG-4');
 		v.FrameRate = 10;
