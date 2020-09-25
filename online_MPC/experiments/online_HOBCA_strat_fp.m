@@ -6,7 +6,7 @@ pathsetup();
 
 %% Load testing data
 % uiopen('load')
-exp_num = 12;
+exp_num = 4;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -356,7 +356,7 @@ for i = 1:T-N
     end
     
     if obca_mpc_safety
-        safety_control = safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
+        safety_control = safety_control.set_acc_ref(TV_v(1)*cos(TV_th(1)));
         [u_safe, safety_control] = safety_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume safety control is applied for one time step then no
         % control action is applied for rest of horizon

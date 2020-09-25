@@ -82,7 +82,7 @@ classdef PID
         function obj = set_x_ref(obj, x_ref)
             obj.x_ref = x_ref;
             obj.ei = 0;
-            obj.e = x_ref - obj.x;
+            obj.e = obj.x - x_ref;
         end
         
         function obj = set_u_ref(obj, u_ref)

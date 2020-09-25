@@ -21,7 +21,8 @@ if ~isfolder('../data/')
 end
 
 time = datestr(now,'yyyy-mm-dd_HH-MM');
-diary(sprintf('../data/FP_StratOBCA_Exp%d_%s.txt', exp_num, time))
+filename = sprintf('FP_StratOBCA_slack_hyp_Exp%d_%s', exp_num, time);
+diary(sprintf('../data/%s.txt', filename))
 
 %% Experiment parameters
 N = 20; % Prediction horizon
@@ -30,6 +31,7 @@ T = length(TV.t); % Length of data
 v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
+confidence_thresh = 0.55;
 
 n_z = 4;
 n_u = 2;
@@ -41,32 +43,29 @@ M = 10; % RK4 steps
 EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
 % Instantiate obca controller
-Q = diag([10 0.1 0.1 10]);
-% Q = diag([0.1 0.01 0.5 0.5]);
-R = diag([0.01 0.01]);
-alpha = 0;
+Q = diag([10 1 1 5]);
+R = diag([1 1]);
+alpha = 0.1;
 
-d_min = 0.001;
+d_min = 0.01; %0.001;
+
 u_u = [0.5; 1.5];
 u_l = [-0.5; -1.5];
 du_u = [0.6; 5];
 du_l = [-0.6; -5];
-% u_u = [0.35; 1];
-% u_l = [-0.35; -1];
-% du_u = [0.3; 3];
-% du_l = [-0.3; -3];
 
-n_obs = 1;
+n_obs = 3;
+n_ineq = [4,1,1];
+d_ineq = 2;
+
 tv_obs = cell(n_obs, N+1);
 lane_width = 8;
-% P_u = Polyhedron('V', [-30, 10; 30, 10; -30, lane_width/2; 30, lane_width/2]);
-% P_l = Polyhedron('V', [-30, -10; 30, -10; -30, -lane_width/2; 30, -lane_width/2]);
-% for i = 1:N+1
-%     tv_obs{2,i}.A = P_u.A;
-%     tv_obs{2,i}.b = P_u.b;
-%     tv_obs{3,i}.A = P_l.A;
-%     tv_obs{3,i}.b = P_l.b;
-% end
+for i = 1:N+1
+    tv_obs{2,i}.A = [0, -1];
+    tv_obs{2,i}.b = -lane_width/2;
+    tv_obs{3,i}.A = [0, 1];
+    tv_obs{3,i}.b = -lane_width/2;
+end
 
 ws_params.name = 'FP_ws_solver_strat_slack_hyp';
 ws_params.N = N;
@@ -97,6 +96,7 @@ opt_params.du_u = du_u;
 opt_params.du_l = du_l;
 opt_params.dynamics = EV_dynamics;
 opt_params.dt = dt;
+opt_params.optlevel = 3;
 
 if ~exist('forces_pro_gen', 'dir')
     mkdir('forces_pro_gen')
@@ -163,10 +163,10 @@ exp_params.dynamics.n_u = n_u;
 exp_params.filter.V = V;
 exp_params.filter.W = W;
 exp_params.filter.Pm = Pm;
+exp_params.confidence_thresh = confidence_thresh;
 
 ws_solve_times = zeros(T-N, 1);
 opt_solve_times = zeros(T-N, 1);
-
 total_times = zeros(T-N, 1);
 
 strategy_lock = false;

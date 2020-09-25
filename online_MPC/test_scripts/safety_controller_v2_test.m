@@ -16,13 +16,13 @@ du_l = [-0.6; -5];
 d_lim = [u_l(1), u_u(1)];
 a_lim = [u_l(2), u_u(2)];
 
-safety_control = safety_controller(dt, d_lim, a_lim, du_u);
+safety_control = safety_controller_v2(dt, d_lim, a_lim, du_u);
 control = safety_controller(dt, d_lim, a_lim, du_u);
 control = control.set_acc_ref(2);
 
 x_0 = [-5; 2; 0; 2];
 
-TV_0 = [35; 2; pi; 3];
+TV_0 = [30; 2; pi; 2];
 
 x_traj = x_0;
 u_traj = [];
@@ -52,7 +52,6 @@ for k = 1:200
 
     min_ts = ceil(abs(rel_vx)/abs(a_lim(1))/dt);
     v_brake = abs(rel_vx)-[0:min_ts]*dt*abs(a_lim(1));
-%     brake_dist = sum(abs(v_brake)*dt) + abs(TV_v*cos(TV_th))*(min_ts+1)*dt + 2*r;
     brake_dist = sum(abs(v_brake)*dt) + 4*r;
 
     if ~brake && d <= brake_dist
@@ -60,7 +59,7 @@ for k = 1:200
     end
     
     if brake
-        safety_control = safety_control.set_acc_ref(TV_v*cos(TV_th));
+        safety_control = safety_control.set_acc_ref(TV_x, TV_v*cos(TV_th));
     end
     
     if brake
@@ -75,9 +74,9 @@ for k = 1:200
     
     TV_x = TV_k(1);
     TV_u = zeros(2,1);
-    if TV_x < 3
-        TV_u = [0.35; 0];
-    end
+%     if TV_x < 3
+%         TV_u = [0.35; 0];
+%     end
         
     TV_kp1 = bikeFE_CoG(TV_k, TV_u, dt);
     TV_traj = [TV_traj TV_kp1];
@@ -119,7 +118,7 @@ axis([1 T -pi pi])
 
 ax_v = axes('Position',[0.5 0.52 0.45 0.2]);
 v_l = animatedline(ax_v, 'color', '#0072BD', 'linewidth', 2);
-ylabel('rel v')
+ylabel('rel x')
 xlim([1 T])
 % axis([1 T -3 3])
 
@@ -131,7 +130,7 @@ axis([1 T -0.35 0.35])
 ax_a = axes('Position',[0.5 0.05 0.45 0.2]);
 a_l = animatedline(ax_a, 'color', '#0072BD', 'linewidth', 2);
 ylabel('a')
-axis([1 T -1 1])
+axis([1 T -1.5 1.5])
 
 F(T) = struct('cdata',[],'colormap',[]);
 
@@ -141,7 +140,7 @@ for i = 1:T
     delete(p2)
     delete(l2)
     
-    EV_k = x_traj(1,i);
+    x_k = x_traj(1,i);
     y_k = x_traj(2,i);
     EV_theta = x_traj(3,i);
     EV_v = x_traj(4,i);
@@ -152,10 +151,9 @@ for i = 1:T
     TV_x_k = TV_traj(1,i);
     TV_y_k = TV_traj(2,i);
     TV_theta_k = TV_traj(3,i);
-    TV_v_k = TV_traj(4,i);
     
     axes(ax1)
-    [p1, l1] = plotCar(EV_k, y_k, EV_theta, wid, len, plt_opts);
+    [p1, l1] = plotCar(x_k, y_k, EV_theta, wid, len, plt_opts);
     hold on
     [p2, l2] = plotCar(TV_x_k, TV_y_k, TV_theta_k, wid, len, TV_plt_opts);
 
@@ -163,7 +161,7 @@ for i = 1:T
     axis(map_dim);
     
     addpoints(th_l, i, EV_theta);
-    addpoints(v_l, i, TV_v_k*cos(TV_theta_k) - EV_v*cos(EV_th));
+    addpoints(v_l, i, TV_x_k-x_k);
     addpoints(d_l, i, delta_k);
     addpoints(a_l, i, a_k);
     drawnow

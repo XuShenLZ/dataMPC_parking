@@ -68,8 +68,8 @@ function [col, safe, eb] = HOBCA_par(exp_num)
 	d_lim = [-0.35, 0.35];
 	a_lim = [-1, 1];
 	du_lim = [0.3; 3];
-	obca_safety_control = safety_controller(dt, d_lim, a_lim, du_lim);
-	obca_ebrake_control = ebrake_controller(dt, d_lim, a_lim);
+	safety_control = safety_controller(dt, d_lim, a_lim, du_lim);
+	ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 	% ==== Filter Setup
 	V = 0.01 * eye(3);
@@ -172,7 +172,6 @@ function [col, safe, eb] = HOBCA_par(exp_num)
 	        EV_x_ref = EV_x + [0:N]*dt*v_ref;
 	        EV_v_ref = v_ref*ones(1, N+1);
 	        obca_mpc_safety = false;
-	        niv_mpc_safety = false;
 	        if all( abs(rel_state(1, :)) > 20 )
 	            % fprintf('Cars are far away, tracking nominal reference velocity\n')
 	        end
@@ -187,7 +186,6 @@ function [col, safe, eb] = HOBCA_par(exp_num)
 	        EV_v_ref = max(score)*v_ref*ones(1, N+1);
 	%         EV_v_ref = v_ref*ones(1, N+1);
 	        obca_mpc_safety = false;
-	        niv_mpc_safety = false;
 	        % fprintf('Confidence: %g, threshold met, tracking score discounted reference velocity\n', max(score))
 	    else
 	        % If yield or not clear to left or right
@@ -289,7 +287,6 @@ function [col, safe, eb] = HOBCA_par(exp_num)
 	    end
 	    
 	    obca_mpc_ebrake = false;
-	    status_ws = [];
 	    status_sol = [];
 
 	    [status_ws, obca_controller] = obca_controller.solve_ws(z_ws, u_ws, tv_obs);
@@ -312,8 +309,8 @@ function [col, safe, eb] = HOBCA_par(exp_num)
 	    end
 	    
 	    if obca_mpc_safety
-	        obca_safety_control = obca_safety_control.set_speed_ref(TV_v(1)*cos(TV_th(1)));
-	        [u_safe, obca_safety_control] = obca_safety_control.solve(z_traj(:,i), TV_pred, u_prev);
+	        safety_control = safety_control.set_acc_ref(TV_v(1)*cos(TV_th(1)));
+	        [u_safe, safety_control] = safety_control.solve(z_traj(:,i), TV_pred, u_prev);
 	        % Assume safety control is applied for one time step then no
 	        % control action is applied for rest of horizon
 	        u_pred = [u_safe zeros(n_u, N-1)];
@@ -324,7 +321,7 @@ function [col, safe, eb] = HOBCA_par(exp_num)
 	        end
 	        % fprintf('Applying safety control\n')
 	    elseif obca_mpc_ebrake
-	        [u_ebrake, obca_ebrake_control] = obca_ebrake_control.solve(z_traj(:,i), TV_pred, EV.inputs(:,end));
+	        [u_ebrake, ebrake_control] = ebrake_control.solve(z_traj(:,i), TV_pred, EV.inputs(:,end));
 	        % Assume ebrake control is applied for one time step then no
 	        % control action is applied for rest of horizon
 	        u_pred = [u_ebrake zeros(n_u, N-1)];
