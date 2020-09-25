@@ -111,7 +111,8 @@ addpath('forces_pro_gen')
 % Instantiate safety controller
 d_lim = [u_l(1), u_u(1)];
 a_lim = [u_l(2), u_u(2)];
-safety_control = safety_controller(dt, d_lim, a_lim, du_u);
+% safety_control = safety_controller(dt, d_lim, a_lim, du_u);
+safety_control = safety_controller_v2(dt, d_lim, a_lim, du_u);
 ebrake_control = ebrake_controller(dt, d_lim, a_lim);
 
 % ==== Filter Setup
@@ -356,7 +357,7 @@ for i = 1:T-N
     end
     
     if obca_mpc_safety
-        safety_control = safety_control.set_acc_ref(TV_v(1)*cos(TV_th(1)));
+        safety_control = safety_control.set_acc_ref(TV_x(1), TV_v(1)*cos(TV_th(1)));
         [u_safe, safety_control] = safety_control.solve(z_traj(:,i), TV_pred, u_prev);
         % Assume safety control is applied for one time step then no
         % control action is applied for rest of horizon

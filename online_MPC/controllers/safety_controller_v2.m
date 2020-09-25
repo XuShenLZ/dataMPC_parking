@@ -107,7 +107,6 @@ classdef safety_controller_v2
             obj.steer_D = steer_D;
         end
         
-        
         function obj = set_acc_ref(obj, pos_ref, vel_ref)
             obj.acc_pos_pid_ref = pos_ref;
             obj.acc_vel_pid_ref = vel_ref;
