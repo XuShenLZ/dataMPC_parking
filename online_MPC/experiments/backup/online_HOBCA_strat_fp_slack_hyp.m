@@ -256,7 +256,7 @@ for i = 1:T-N
     z_detect = z_ref; % Use the ref to construct hpp
     horizon_collision = [];
     for j = 1:N+1
-        collision = check_collision(z_detect(1:2,j), TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+        collision = check_collision_point(z_detect(1:2,j), TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
         horizon_collision = [horizon_collision, collision];
     end
 
@@ -408,7 +408,7 @@ for i = 1:T-N
     hyps{i} = hyp;
 
     % Check the collision at the current time step
-    collide(i) = check_current_collision(z_traj(1:3, i), TV_pred(1:3, 1), EV);
+    collide(i) = check_collision_poly(z_traj(1:3, i), TV_pred(1:3, 1), EV);
     
     safety(i) = obca_mpc_safety;
     ebrake(i) = obca_mpc_ebrake;

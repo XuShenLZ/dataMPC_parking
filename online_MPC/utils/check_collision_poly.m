@@ -1,5 +1,5 @@
-%% check_current_collision: function description
-function collide = check_current_collision(z_EV, z_TV, EV)
+%% check_collision_poly: function description
+function collide = check_collision_poly(z_EV, z_TV, EV)
 	EV_x  = z_EV(1);
     EV_y  = z_EV(2);
     EV_th = z_EV(3);

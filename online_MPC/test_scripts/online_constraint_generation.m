@@ -121,7 +121,7 @@ for i = 100:T-N
     horizon_collision = [];
     for j = 1:N+1
         ref = [EV_x_ref(j); EV_y_ref(j)];
-        collision = check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+        collision = check_collision_point(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
         horizon_collision = [horizon_collision, collision];
         if collision
             if max_idx == 1

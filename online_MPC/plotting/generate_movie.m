@@ -3,7 +3,7 @@ clear all
 
 % Plot and save movie
 
-name = 'FP_StratOBCA_Exp16_2020-09-21_23-11';
+name = 'FP_StratOBCA_Exp30_2020-09-28_21-11';
 fname = sprintf('../data/%s.mat', name);
 
 plt_params.visible = 'on'; % or 'off' to shut down real time display

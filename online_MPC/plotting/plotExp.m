@@ -5,7 +5,7 @@ function F = plotExp(dataname, plt_params)
 	load(dataname)
 
 	map_dim = [-30 30 -10 10];
-	strategies = ["Left", "Right", "Yield"];
+	strategy_names = ["Left", "Right", "Yield"];
     colors = {'#0072BD', '#D95319', '#77AC30'};
     
 	T = exp_params.T;
@@ -102,7 +102,7 @@ function F = plotExp(dataname, plt_params)
 	L_line = animatedline(ax2, 'color', colors{1}, 'linewidth', 2);
 	R_line = animatedline(ax2, 'color', colors{2}, 'linewidth', 2);
 	Y_line = animatedline(ax2, 'color', colors{3}, 'linewidth', 2);
-	legend('Left', 'Right', 'Yield')
+	legend('Left', 'Right', 'Yield', 'Location', 'northwest')
 	prob_dim = [1 T-N 0 1];
 	ylabel('Score')
 	axis(prob_dim)
@@ -164,14 +164,31 @@ function F = plotExp(dataname, plt_params)
 	    addpoints(h_v_l, i, z_traj(4,i));
 	    addpoints(h_d_l, i, u_traj(1,i));
 	    addpoints(h_a_l, i, u_traj(2,i));
-	    addpoints(h_e_l, i, double(ebrake(i)));
-        addpoints(h_c_l, i, double(collide(i)));
+
+        if exist('collide', 'var')
+            addpoints(h_c_l, i, double(collide(i)));
+        end
+
+
+        if exist('ebrake', 'var')
+            addpoints(h_e_l, i, double(ebrake(i)));
+        elseif exist('FSM_states', 'var')
+            if FSM_states{i} == "Emergency-Break"
+                addpoints(h_e_l, i, 1);
+            else
+                addpoints(h_e_l, i, 0);
+            end
+        end     
 
 	    % Plot
 	    axes(ax1);
         if exist('strategy_idxs', 'var')
-            t_Y = text(-29, 9, sprintf('Strategy: %s; Lock: %d', strategies(strategy_idxs(i)), strategy_locks(i)), 'color', 'k');
+            t_Y = text(-29, 9, sprintf('Strategy: %s; Lock: %d', strategy_names(strategy_idxs(i)), strategy_locks(i)), 'color', 'k');
             hold on
+        elseif exist('FSM_states', 'var') && exist('FSM_states', 'var')
+            t_Y = text(-29, 9, sprintf('Operation State: %s; Strategy: %s', FSM_states{i}, strategies{i}), 'color', 'k');
+        else
+            t_Y = [];
         end
         
         if exist('safety', 'var')
@@ -182,6 +199,22 @@ function F = plotExp(dataname, plt_params)
                 sol_stat = 'n/a';
             else
                 s_h = 'OFF';
+                ws_stat = 'n/a';
+                sol_stat = sol_stats{i}.return_status;
+                if exist('ws_stats', 'var')
+                    ws_stat = ws_stats{i}.return_status;
+                    if ~ws_stats{i}.success
+                        sol_stat = 'n/a';
+                    end
+                end
+            end
+        elseif exist('FSM_states', 'var')
+            if any(FSM_states{i} == ["Safe-Confidence", "Safe-Infeasible"])
+                addpoints(h_s_l, i, 1);
+                ws_stat = 'n/a';
+                sol_stat = 'n/a';
+            else
+                addpoints(h_s_l, i, 0);
                 ws_stat = 'n/a';
                 sol_stat = sol_stats{i}.return_status;
                 if exist('ws_stats', 'var')
@@ -202,15 +235,22 @@ function F = plotExp(dataname, plt_params)
                 end
             end
         end
-            
-        if ebrake(i)
-	        e_h = 'ON';
-	    else
-	        e_h = 'OFF';
+        
+        if exist('ebrake', 'var')
+            if ebrake(i)
+    	        e_h = 'ON';
+    	    else
+    	        e_h = 'OFF';
+            end
         end
         
 	    t_h_feas = text(-29, 7, sprintf('HOBCA Online MPC (ws): %s, (sol): %s', ws_stat, sol_stat), 'color', 'b', 'interpreter', 'none');
-	    t_h_safe = text(-29, 5, sprintf('Safety: %s, E-Brake: %s', s_h, e_h), 'color', 'b');
+
+        if exist('ebrake', 'var') && exist('safety', 'var')
+    	    t_h_safe = text(-29, 5, sprintf('Safety: %s, E-Brake: %s', s_h, e_h), 'color', 'b');
+        else
+            t_h_safe = [];
+        end
         
         if plt_sol
             [p_OEV, l_OEV] = plotCar(OEV.traj(1,i), OEV.traj(2,i), OEV.traj(3,i), OEV.width, OEV.length, OEV_plt_opts);

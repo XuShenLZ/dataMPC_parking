@@ -219,7 +219,7 @@ for i = 1:T-N
     horizon_collision = [];
     for j = 1:N+1
         ref = z_detect(1:2, j); 
-        collision = check_collision(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
+        collision = check_collision_point(ref, TV_x(j), TV_y(j), TV_th(j), TV.width, TV.length, r);
         horizon_collision = [horizon_collision, collision];
     end
 

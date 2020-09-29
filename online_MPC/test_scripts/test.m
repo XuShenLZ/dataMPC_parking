@@ -44,7 +44,7 @@ TV_y = 3;
 TV_theta = 7*pi/6;
 
 R = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
-collision = check_collision([EV_x; EV_y], TV_x, TV_y, TV_theta, TV.width, TV.length, r);
+collision = check_collision_point([EV_x; EV_y], TV_x, TV_y, TV_theta, TV.width, TV.length, r);
 
 phi = linspace(0, 2*pi, 200);
 x = [];

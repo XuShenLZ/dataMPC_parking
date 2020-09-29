@@ -1,4 +1,4 @@
-function collision = check_collision(p, x, y, theta, w, l, r)
+function collision = check_collision_point(p, x, y, theta, w, l, r)
     % p: query point
     % (x, y, theta): configuration of target vehicle
     % (w, l, r): width, length of vehicle and collision buffer radius
