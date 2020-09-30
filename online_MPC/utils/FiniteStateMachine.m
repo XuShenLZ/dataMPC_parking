@@ -9,6 +9,8 @@ classdef FiniteStateMachine < handle
 		x_max; % Maximum x coordinate to finish the task
 		T_max; % Maximum time steps for the task
 		T_tv; % Length of tv data
+		lock_steps; % Steps to lock the HOBCA
+		strategy_names; % Names of all strategies
 
 		a_lim; % Acceleration Limit
 		dt; % time interval
@@ -23,6 +25,8 @@ classdef FiniteStateMachine < handle
 			self.x_max = exp_params.x_max;
 			self.T_max = exp_params.T;
 			self.T_tv  = exp_params.T_tv;
+			self.lock_steps = exp_params.lock_steps;
+			self.strategy_names = exp_params.strategy_names;
 
 			self.a_lim = exp_params.controller.a_lim;
 			self.dt = exp_params.dynamics.dt;
@@ -48,28 +52,23 @@ classdef FiniteStateMachine < handle
 				case "Free-Driving"
 					if self.toEnd(t, EV_curr)
 						state_next = "End";
-					elseif self.toFD(t, EV_curr, TV_pred)
-						state_next = "Free-Driving";
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
-					elseif self.toHOBCA(score, feas)
+					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
 
 						[~, max_idx] = max(score);
-						if max_idx == 1
-							strategy_next = "Left";
-						elseif max_idx == 2
-							strategy_next = "Right";
-						else
-							disp_msg = sprintf('Yield is triggered when transitioning from %s to HOBCA unlocked', self.state);
+						strategy_tmp = self.strategy_names(max_idx);
+
+						if strategy_tmp == "Yield"
+							disp_msg = sprintf('%s: Yield is triggered when transitioning to HOBCA unlocked', self.state);
 							error(disp_msg);
+						else
+							strategy_next = strategy_tmp;
 						end
 					else
-						% DISCUSS: Is this reasonable
 						state_next = "Free-Driving";
-						% disp_msg = sprintf('Unexpected Situation during %s', self.state);
-						% error(disp_msg);
 					end
 				case "Safe-Confidence"
 					if self.toEnd(t, EV_curr)
@@ -78,30 +77,21 @@ classdef FiniteStateMachine < handle
 						state_next = "Free-Driving";
 					elseif self.toEB(actual_collision)
 						state_next = "Emergency-Break";
-					% elseif self.toSafeCon(score, EV_curr, TV_pred)
-					% 	state_next = "Safe-Confidence";
-					% 	strategy_next = "Yield";
-					elseif self.toSafeInfeas(score, feas)
-						state_next = "Safe-Infeasible";
-						strategy_next = "Yield";
-					elseif self.toHOBCA(score, feas)
+					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
 
 						[~, max_idx] = max(score);
-						if max_idx == 1
-							strategy_next = "Left";
-						elseif max_idx == 2
-							strategy_next = "Right";
-						else
-							disp_msg = sprintf('Yield is triggered when transitioning from %s to HOBCA unlocked', self.state);
+						strategy_tmp = self.strategy_names(max_idx);
+
+						if strategy_tmp == "Yield"
+							disp_msg = sprintf('%s: Yield is triggered when transitioning to HOBCA unlocked', self.state);
 							error(disp_msg);
+						else
+							strategy_next = strategy_tmp;
 						end
 					else
-						% DISCUSS: Is this reasonable
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
-						% disp_msg = sprintf('Unexpected Situation during %s', self.state);
-						% error(disp_msg);
 					end	
 				case "Safe-Infeasible"
 					if self.toEnd(t, EV_curr)
@@ -113,27 +103,21 @@ classdef FiniteStateMachine < handle
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
-					% elseif self.toSafeInfeas(score, feas)
-					% 	state_next = "Safe-Infeasible";
-					% 	strategy_next = "Yield";
-					elseif self.toHOBCA(score, feas)
+					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
 
 						[~, max_idx] = max(score);
-						if max_idx == 1
-							strategy_next = "Left";
-						elseif max_idx == 2
-							strategy_next = "Right";
-						else
-							disp_msg = sprintf('Yield is triggered when transitioning from %s to HOBCA unlocked', self.state);
+						strategy_tmp = self.strategy_names(max_idx);
+
+						if strategy_tmp == "Yield"
+							disp_msg = sprintf('%s: Yield is triggered when transitioning to HOBCA unlocked', self.state);
 							error(disp_msg);
+						else
+							strategy_next = strategy_tmp;
 						end
 					else
-						% DISCUSS: Is this reasonable
 						state_next = "Safe-Infeasible";
 						strategy_next = "Yield";
-						% disp_msg = sprintf('Unexpected Situation during %s', self.state);
-						% error(disp_msg);
 					end
 				case "HOBCA-Unlocked"
 					if self.toEnd(t, EV_curr)
@@ -143,29 +127,25 @@ classdef FiniteStateMachine < handle
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
-					elseif self.toSafeInfeas(score, feas)
+					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
 						state_next = "Safe-Infeasible";
 						strategy_next = "Yield";
-					elseif self.toHOBCA_lock(score, ref_col, feas)
+					elseif self.toHOBCA_lock(score, ref_col, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Locked";
 
 						strategy_next = self.strategy;
-					elseif self.toHOBCA(score, feas)
+					else
 						state_next = "HOBCA-Unlocked";
 
 						[~, max_idx] = max(score);
-						if max_idx == 1
-							strategy_next = "Left";
-						elseif max_idx == 2
-							strategy_next = "Right";
-						else
-							disp_msg = sprintf('Yield is triggered when transitioning from %s to HOBCA unlocked', self.state);
+						strategy_tmp = self.strategy_names(max_idx);
+
+						if strategy_tmp == "Yield"
+							disp_msg = sprintf('%s: Yield is triggered when transitioning to HOBCA unlocked', self.state);
 							error(disp_msg);
+						else
+							strategy_next = strategy_tmp;
 						end
-					else
-						% DISCUSS: Is it possible to fall in here?
-						disp_msg = sprintf('Unexpected Situation during %s', self.state);
-						error(disp_msg);
 					end
 				case "HOBCA-Locked"
 					if self.toEnd(t, EV_curr)
@@ -175,17 +155,13 @@ classdef FiniteStateMachine < handle
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
-					elseif self.toSafeInfeas(score, feas)
+					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
 						state_next = "Safe-Infeasible";
 						strategy_next = "Yield";
 					else
-						% DISCUSS: Is this reasonable
 						state_next = "HOBCA-Locked";
 
 						strategy_next = self.strategy;
-					% else
-					% 	disp_msg = sprintf('Unexpected Situation during %s', self.state);
-					% 	error(disp_msg);
 					end
 				case "Emergency-Break"
 					if self.toEnd(t, EV_curr)
@@ -198,23 +174,23 @@ classdef FiniteStateMachine < handle
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
-					elseif self.toSafeInfeas(score, feas)
+					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
 						state_next = "Safe-Infeasible";
 						strategy_next = "Yield";
-					elseif self.toHOBCA(score, feas)
+					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
 
 						[~, max_idx] = max(score);
-						if max_idx == 1
-							strategy_next = "Left";
-						elseif max_idx == 2
-							strategy_next = "Right";
-						else
-							disp_msg = sprintf('Yield is triggered when transitioning from %s to HOBCA unlocked', self.state);
+						strategy_tmp = self.strategy_names(max_idx);
+
+						if strategy_tmp == "Yield"
+							disp_msg = sprintf('%s: Yield is triggered when transitioning to HOBCA unlocked', self.state);
 							error(disp_msg);
+						else
+							strategy_next = strategy_tmp;
 						end
 					else
-						disp_msg = sprintf('Unexpected Situation during %s', self.state);
+						disp_msg = sprintf('%s: Unexpected Situation', self.state);
 						error(disp_msg);
 					end
 						
@@ -271,7 +247,12 @@ classdef FiniteStateMachine < handle
 		% Need to implicitly check maneuver zone by the order in if-else structure
 		function output = toSafeCon(self, score, EV_curr, TV_pred)
 
-			% DISCUSS: Breaking Thresh
+			% Check the Maneuver Zone
+			rel_state = TV_pred - EV_curr;
+			if all( rel_state(1, :) > 20 ) || rel_state(1, 1) < -self.r
+				output = false;
+				return
+			end
 
 			% Compute the distance threshold for applying braking assuming max
 			% decceleration is applied
@@ -289,10 +270,11 @@ classdef FiniteStateMachine < handle
 
 			%% Max score
 			[~, max_idx] = max(score);
+			strategy_tmp = self.strategy_names(max_idx);
 		
 			% If all scores are below the confidence threshold 
 			% or the argmax is "yield"
-			if (max(score) <= self.confidence_thresh || max_idx == 3) && d <= brake_thresh
+			if (max(score) <= self.confidence_thresh || strategy_tmp == "Yield") && d <= brake_thresh
 				output = true;
 			else
 				output = false;
@@ -301,10 +283,19 @@ classdef FiniteStateMachine < handle
 
 		%% toSafeInfeas: The transition criteria to Safety Control - Infeasible
 		% Need to implicitly check maneuver zone by the order in if-else structure
-		function output = toSafeInfeas(self, score, feas)
-			[~, max_idx] = max(score);
+		function output = toSafeInfeas(self, score, feas, EV_curr, TV_pred)
 
-			if max(score) > self.confidence_thresh && max_idx < 3 && (~feas)
+			% Check the Maneuver Zone
+			rel_state = TV_pred - EV_curr;
+			if all( rel_state(1, :) > 20 ) || rel_state(1, 1) < -self.r
+				output = false;
+				return
+			end
+
+			[~, max_idx] = max(score);
+			strategy_tmp = self.strategy_names(max_idx);
+
+			if (max(score) > self.confidence_thresh) && (strategy_tmp ~= "Yield") && (~feas)
 				output = true;
 			else
 				output = false;
@@ -313,13 +304,22 @@ classdef FiniteStateMachine < handle
 
 		%% toHOBCA: The transition criteria to HOBCA - Unlocked
 		% Need to implicitly check maneuver zone by the order in if-else structure
-		function output = toHOBCA(self, score, feas)
+		function output = toHOBCA(self, score, feas, EV_curr, TV_pred)
+
+			% Check the Maneuver Zone
+			rel_state = TV_pred - EV_curr;
+			if all( rel_state(1, :) > 20 ) || rel_state(1, 1) < -self.r
+				output = false;
+				return
+			end
+
 			[~, max_idx] = max(score);
+			strategy_tmp = self.strategy_names(max_idx);
 			
 			% If max score is above the confidence threshold
 			% and the argmax is "Left" or "Right"
 			% and the current HOBCA status is feasible
-			if max(score) > self.confidence_thresh && max_idx < 3 && feas
+			if (max(score) > self.confidence_thresh) && (strategy_tmp ~= "Yield") && feas
 				output = true;
 			else
 				output = false;
@@ -329,14 +329,23 @@ classdef FiniteStateMachine < handle
 
 		%% toHOBCA_lock: The transition criteria to HOBCA - Locked
 		% Need to implicitly check maneuver zone by the order in if-else structure
-		function output = toHOBCA_lock(self, score, ref_col, feas)
+		function output = toHOBCA_lock(self, score, ref_col, feas, EV_curr, TV_pred)
+			
+			% Check the Maneuver Zone
+			rel_state = TV_pred - EV_curr;
+			if all( rel_state(1, :) > 20 ) || rel_state(1, 1) < -self.r
+				output = false;
+				return
+			end
+
 			[~, max_idx] = max(score);
+			strategy_tmp = self.strategy_names(max_idx);
 			
 			% If there are more than 3 steps along ref traj in collision buffer
 			% and max score is above the confidence threshold
 			% and the argmax is "Left" or "Right"
 			% and the current HOBCA status is feasible
-			if sum(ref_col) >= 3 && max(score) > self.confidence_thresh && max_idx < 3 && feas
+			if (sum(ref_col) >= self.lock_steps) && (max(score) > self.confidence_thresh) && (strategy_tmp ~= "Yield") && feas
 				output = true;
 			else
 				output = false;

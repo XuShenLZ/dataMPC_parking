@@ -5,7 +5,6 @@ function F = plotExp(dataname, plt_params)
 	load(dataname)
 
 	map_dim = [-30 30 -10 10];
-	strategy_names = ["Left", "Right", "Yield"];
     colors = {'#0072BD', '#D95319', '#77AC30'};
     
 	T = exp_params.T;
@@ -96,6 +95,12 @@ function F = plotExp(dataname, plt_params)
 	axis(map_dim);
     if isfield(exp_params, 'name')
         title(sprintf('%s, exp %i', exp_params.name, exp_params.exp_num))
+    end
+
+    if isfield(exp_params, 'strategy_names')
+        strategy_names = exp_params.strategy_names;
+    else
+        strategy_names = ["Left", "Right", "Yield"];
     end
 
 	ax2 = axes('Position',[0.05 0.05 0.4 0.4]);

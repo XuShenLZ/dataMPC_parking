@@ -3,15 +3,9 @@ close all
 clc
 
 %% Data generation
-% datagen_HOBCA_strat_fp;
+FSM_datagen_HOBCA_strat_fp;
 
-% datagen_HOBCA_naive_fp;
-
-% backup controller will activate when infeasible
-% and emergency break will activate when there is actual collision
-BACK_datagen_HOBCA_strat_fp;
-
-BACK_datagen_HOBCA_naive_fp;
+% BACK_datagen_HOBCA_naive_fp;
 
 %% Analysis
 strat = load('../datagen/0STATS_hobca_strat_2020-09-22_02-19.mat');
@@ -29,11 +23,11 @@ legend
 title('Task Time Distribution')
 
 %% Generate Movies with Collision
-files = dir('../datagen/0922/');
+files = dir('../datagen/0929/');
 
 col_filenames = {};
 for i = 3:length(files)
-   name = regexp(files(i).name, '(.+strat.+Col1.+)\.mat', 'tokens');
+   name = regexp(files(i).name, '(FSM.+Col1.*)\.mat', 'tokens');
    if ~isempty(name)
        col_filenames{end+1} = name{1};
    end

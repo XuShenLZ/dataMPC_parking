@@ -7,7 +7,7 @@ pathsetup();
 tExp = tic;
 %% Load testing data
 % uiopen('load')
-exp_num = 30;
+exp_num = 4;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -39,6 +39,9 @@ v_ref = EV.ref_v; % Reference velocity
 y_ref = EV.ref_y; % Reference y
 r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
 confidence_thresh = 0.55;
+lock_steps = 3;
+
+strategy_names = ["Left", "Right", "Yield"];
 
 % Extend TV traj to remain staionary after parked
 TV.x(end+1:T) = TV.x(end);
@@ -169,6 +172,8 @@ exp_params.x_max = x_max;
 exp_params.lane_width = lane_width;
 exp_params.model = model_name;
 exp_params.confidence_thresh = confidence_thresh;
+exp_params.lock_steps = lock_steps;
+exp_params.strategy_names = strategy_names;
 
 exp_params.controller.N = N;
 exp_params.controller.Q = Q;
