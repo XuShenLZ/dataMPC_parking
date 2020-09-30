@@ -16,12 +16,12 @@ parfor exp_num = 1:all_nums
 	fprintf('Solving exp_num = %d\n', exp_num);
     try
         [col, T_final] = HOBCA_par(exp_num);
+		all_col(exp_num) = col;
+		all_times(exp_num) = T_final;
     catch
         fprintf('Unknown Error for exp_num = %d\n', exp_num)
         unknown_error(exp_num) = true;
     end
-	all_col(exp_num) = col;
-	all_times(exp_num) = T_final;
 end
 
 filename = sprintf('../datagen/0STATS_FSM_hobca_strat_%s.mat', datestr(now,'yyyy-mm-dd_HH-MM'));
@@ -367,7 +367,10 @@ function [col, T_final] = HOBCA_par(exp_num)
 
 	    if status_ws.success && status_sol.success
 	        feas = true;
+
 	        actual_collision = false;
+        	exp_states.actual_collision = actual_collision;
+
 	        opt_solve_times(i) = status_sol.solve_time;
 	    else
 	        feas = false;
@@ -375,7 +378,6 @@ function [col, T_final] = HOBCA_par(exp_num)
 	    
 	    % Test the state transition again to use the feasiblity of HOBCA
 	    exp_states.feas = feas;
-	    exp_states.actual_collision = actual_collision;
 	    strategy = FSM.state_transition(exp_states);
 
 	    if any(FSM.state == ["Safe-Confidence", "Safe-Infeasible"])

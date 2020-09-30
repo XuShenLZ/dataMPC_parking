@@ -7,7 +7,7 @@ pathsetup();
 tExp = tic;
 %% Load testing data
 % uiopen('load')
-exp_num = 4;
+exp_num = 22;
 exp_file = strcat('../../data/exp_num_', num2str(exp_num), '.mat');
 load(exp_file)
 
@@ -349,7 +349,10 @@ while ~isequal(FSM.state, "End")
 
     if status_ws.success && status_sol.success
         feas = true;
+        
         actual_collision = false;
+        exp_states.actual_collision = actual_collision;
+
         opt_solve_times(i) = status_sol.solve_time;
     else
         feas = false;
@@ -357,7 +360,6 @@ while ~isequal(FSM.state, "End")
     
     % Test the state transition again to use the feasiblity of HOBCA
     exp_states.feas = feas;
-    exp_states.actual_collision = actual_collision;
     strategy = FSM.state_transition(exp_states);
 
     if any(FSM.state == ["Safe-Confidence", "Safe-Infeasible"])
