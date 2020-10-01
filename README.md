@@ -13,9 +13,11 @@ Edward Zhu, edward_zhu@berkeley.edu
 5. Forces Pro (For fast implementation)
 
 ## Change log
+### 10/01/2020
+1. Reorganize the files. Now `FSM_HOBCA_naive_fp.m` and `FSM_HOBCA_strat_fp.m` are all functions. Use `experiment.m` or `datagen.m` to call them.
+
 ### 09/29/2020
 1. Datagen with FSM
-2. PlotExp Changes
 
 ### 09/28/2020
 1. Code up the Finite State Machine formulation (`./online_MPC/utils/FiniteStateMachine.m`, `./online_MPC/experiments/FSM_online_HOBCA_strat_fp.m`)

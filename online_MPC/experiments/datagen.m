@@ -3,9 +3,33 @@ close all
 clc
 
 %% Data generation
-FSM_datagen_HOBCA_strat_fp;
+pathsetup();
 
-% BACK_datagen_HOBCA_naive_fp;
+all_nums = 486;
+datagen = true;
+
+all_col = zeros(1, all_nums);
+
+unknown_error = zeros(1, all_nums);
+
+all_times = zeros(1, all_nums);
+
+parfor exp_num = 1:all_nums
+	fprintf('Solving exp_num = %d\n', exp_num);
+    try
+        [col, T_final] = FSM_HOBCA_strat_fp(exp_num, datagen);
+		all_col(exp_num) = col;
+		all_times(exp_num) = T_final;
+    catch
+        fprintf('Unknown Error for exp_num = %d\n', exp_num)
+        unknown_error(exp_num) = true;
+    end
+end
+
+filename = sprintf('../datagen/0STATS_FSM_hobca_strat_%s.mat', datestr(now,'yyyy-mm-dd_HH-MM'));
+save(filename, 'all_col', 'unknown_error', 'all_times')
+
+fprintf('Stats saved as: %s, datagen of FSM_HOBCA_strat completed.\n', filename)
 
 %% Analysis
 strat_old = load('../datagen/0STATS_hobca_strat_2020-09-22_02-19.mat');
