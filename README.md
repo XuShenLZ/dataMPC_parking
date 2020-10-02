@@ -15,6 +15,7 @@ Edward Zhu, edward_zhu@berkeley.edu
 ## Change log
 ### 10/01/2020
 1. Reorganize the files. Now `FSM_HOBCA_naive_fp.m` and `FSM_HOBCA_strat_fp.m` are all functions. Use `experiment.m` or `datagen.m` to call them.
+2. Added `Safe-Yield` state.
 
 ### 09/29/2020
 1. Datagen with FSM

@@ -14,8 +14,8 @@ classdef FiniteStateMachine < handle
 
 		a_lim; % Acceleration Limit
 		dt; % time interval
-    end
-    
+	end
+
 	methods
 		%% FSM: constructor 
 		function self = FiniteStateMachine(exp_params)
@@ -55,6 +55,9 @@ classdef FiniteStateMachine < handle
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
+					elseif self.toSafeYield(score, EV_curr, TV_pred)
+						state_next = "Safe-Yield";
+						strategy_next = "Yield";
 					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
 
@@ -77,6 +80,12 @@ classdef FiniteStateMachine < handle
 						state_next = "Free-Driving";
 					elseif self.toEB(actual_collision)
 						state_next = "Emergency-Break";
+					elseif self.toSafeYield(score, EV_curr, TV_pred)
+						state_next = "Safe-Yield";
+						strategy_next = "Yield";
+					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
+						state_next = "Safe-Infeasible";
+						strategy_next = "Yield";
 					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
 
@@ -92,7 +101,36 @@ classdef FiniteStateMachine < handle
 					else
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
-					end	
+					end
+				case "Safe-Yield"
+					if self.toEnd(t, EV_curr)
+						state_next = "End";
+					elseif self.toFD(t, EV_curr, TV_pred)
+						state_next = "Free-Driving";
+					elseif self.toEB(actual_collision)
+						state_next = "Emergency-Break";
+					elseif self.toSafeCon(score, EV_curr, TV_pred)
+						state_next = "Safe-Confidence";
+						strategy_next = "Yield";
+					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
+						state_next = "Safe-Infeasible";
+						strategy_next = "Yield";
+					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
+						state_next = "HOBCA-Unlocked";
+
+						[~, max_idx] = max(score);
+						strategy_tmp = self.strategy_names(max_idx);
+
+						if strategy_tmp == "Yield"
+							disp_msg = sprintf('%s: Yield is triggered when transitioning to HOBCA unlocked', self.state);
+							error(disp_msg);
+						else
+							strategy_next = strategy_tmp;
+						end
+					else
+						state_next = "Safe-Yield";
+						strategy_next = "Yield";
+					end
 				case "Safe-Infeasible"
 					if self.toEnd(t, EV_curr)
 						state_next = "End";
@@ -102,6 +140,9 @@ classdef FiniteStateMachine < handle
 						state_next = "Emergency-Break";
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
+						strategy_next = "Yield";
+					elseif self.toSafeYield(score, EV_curr, TV_pred)
+						state_next = "Safe-Yield";
 						strategy_next = "Yield";
 					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
@@ -126,6 +167,9 @@ classdef FiniteStateMachine < handle
 						state_next = "Free-Driving";
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
+						strategy_next = "Yield";
+					elseif self.toSafeYield(score, EV_curr, TV_pred)
+						state_next = "Safe-Yield";
 						strategy_next = "Yield";
 					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
 						state_next = "Safe-Infeasible";
@@ -152,8 +196,8 @@ classdef FiniteStateMachine < handle
 						state_next = "End";
 					elseif self.toFD(t, EV_curr, TV_pred)
 						state_next = "Free-Driving";
-					elseif self.toSafeCon(score, EV_curr, TV_pred)
-						state_next = "Safe-Confidence";
+					elseif self.toSafeYield(score, EV_curr, TV_pred)
+						state_next = "Safe-Yield";
 						strategy_next = "Yield";
 					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
 						state_next = "Safe-Infeasible";
@@ -173,6 +217,9 @@ classdef FiniteStateMachine < handle
 						state_next = "Free-Driving";
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
+						strategy_next = "Yield";
+					elseif self.toSafeYield(score, EV_curr, TV_pred)
+						state_next = "Safe-Yield";
 						strategy_next = "Yield";
 					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
 						state_next = "Safe-Infeasible";
@@ -244,7 +291,6 @@ classdef FiniteStateMachine < handle
 		end
 
 		%% toSafeCon: The transition criteria to Safety Control - Confidence
-		% Need to implicitly check maneuver zone by the order in if-else structure
 		function output = toSafeCon(self, score, EV_curr, TV_pred)
 
 			% Check the Maneuver Zone
@@ -274,15 +320,36 @@ classdef FiniteStateMachine < handle
 		
 			% If all scores are below the confidence threshold 
 			% or the argmax is "yield"
-			if (max(score) <= self.confidence_thresh || strategy_tmp == "Yield") && d <= brake_thresh
+			if max(score) <= self.confidence_thresh && d <= brake_thresh
 				output = true;
 			else
 				output = false;
 			end
 		end
 
+		%% toSafeYield: The transition criteria to Safety Control - Yield
+		function output = toSafeYield(self, score, EV_curr, TV_pred)
+
+			% Check the Maneuver Zone
+			rel_state = TV_pred - EV_curr;
+			if all( rel_state(1, :) > 20 ) || rel_state(1, 1) < -self.r
+				output = false;
+				return
+			end
+
+			%% Max score
+			[~, max_idx] = max(score);
+			strategy_tmp = self.strategy_names(max_idx);
+
+			if max(score) > self.confidence_thresh && strategy_tmp == "Yield"
+				output = true;
+			else
+				output = false;
+			end
+		end
+		
+
 		%% toSafeInfeas: The transition criteria to Safety Control - Infeasible
-		% Need to implicitly check maneuver zone by the order in if-else structure
 		function output = toSafeInfeas(self, score, feas, EV_curr, TV_pred)
 
 			% Check the Maneuver Zone

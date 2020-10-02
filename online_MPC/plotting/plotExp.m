@@ -85,7 +85,7 @@ function F = plotExp(dataname, plt_params)
 
 	fig = figure('Position', [50 50 1200 600], 'Visible', plt_params.visible);
 
-	ax1 = axes('Position',[0.05 0.55 0.4 0.4]);
+	ax1 = axes('Position',[0.05 0.6 0.4 0.4]);
     if isfield(exp_params, 'lane_width')
         yline(exp_params.lane_width/2, '-.', 'color', '#7E2F8E', 'linewidth', 2)
         hold on
@@ -103,15 +103,18 @@ function F = plotExp(dataname, plt_params)
         strategy_names = ["Left", "Right", "Yield"];
     end
 
-	ax2 = axes('Position',[0.05 0.05 0.4 0.4]);
-	L_line = animatedline(ax2, 'color', colors{1}, 'linewidth', 2);
-	R_line = animatedline(ax2, 'color', colors{2}, 'linewidth', 2);
-	Y_line = animatedline(ax2, 'color', colors{3}, 'linewidth', 2);
-	legend('Left', 'Right', 'Yield', 'Location', 'northwest')
-	prob_dim = [1 T-N 0 1];
-	ylabel('Score')
-	axis(prob_dim)
-	grid on
+    ax_state = axes('Position',[0.1 0.05 0.35 0.4]);
+    state_line = animatedline(ax_state, 'color', colors{1}, 'linewidth', 2);
+    h_c_l = animatedline(ax_state, 'color', colors{2}, 'linewidth', 2, 'linestyle', '--');
+    legend('State', 'Collision')
+    ylabel('States')
+    yticks(0:6)
+    yticklabels({'Free-Driving', ...
+        'Safe-Confidence', 'Safe-Yield', 'Safe-Infeasible', ...
+        'HOBCA-Unlocked', 'HOBCA-Locked', ...
+        'Emergency-Break'})
+    axis([1 T-N 0 6])
+    grid on
 
 	% Plot inputs
 	ax_h_v = axes('Position',[0.5 0.75 0.45 0.2]);
@@ -129,13 +132,15 @@ function F = plotExp(dataname, plt_params)
 	ylabel('a')
 	axis([1 T-N a_lim(1) a_lim(2)])
 
-	ax_h_s = axes('Position',[0.5 0.05 0.45 0.2]);
-	h_s_l = animatedline(ax_h_s, 'color', '#0072BD', 'linewidth', 2);
-	h_e_l = animatedline(ax_h_s, 'color', '#D95319', 'linewidth', 2, 'linestyle', '--');
-    h_c_l = animatedline(ax_h_s, 'color', '#77AC30', 'linewidth', 2, 'linestyle', '--');
-	legend('Safety', 'E-Brake', 'Collision')
-	ylabel('safety')
-	axis([1 T-N 0 1])
+	ax_score = axes('Position',[0.5 0.05 0.45 0.2]);
+	L_line = animatedline(ax_score, 'color', colors{1}, 'linewidth', 2);
+	R_line = animatedline(ax_score, 'color', colors{2}, 'linewidth', 2);
+	Y_line = animatedline(ax_score, 'color', colors{3}, 'linewidth', 2);
+	legend('Left', 'Right', 'Yield', 'Location', 'southeast', 'Orientation', 'horizontal')
+	prob_dim = [1 T-N 0 1];
+	ylabel('Score')
+	axis(prob_dim)
+	grid on
 
     for i = 1:T-N
         % Delete lines and patches from last iteration
@@ -154,7 +159,7 @@ function F = plotExp(dataname, plt_params)
 	    
         if exist('scores', 'var')
             delete(l_s); delete(t_s);
-            axes(ax2);
+            axes(ax_score);
             hold on
             score = scores(:,i);
             addpoints(L_line, i, score(1));
@@ -175,15 +180,32 @@ function F = plotExp(dataname, plt_params)
         end
 
 
-        if exist('ebrake', 'var')
-            addpoints(h_e_l, i, double(ebrake(i)));
-        elseif exist('FSM_states', 'var')
-            if FSM_states{i} == "Emergency-Break"
-                addpoints(h_e_l, i, 1);
-            else
-                addpoints(h_e_l, i, 0);
+        if exist('ebrake', 'var') && exist('safety', 'var')
+            if ebrake(i)
+                addpoints(state_line, i, 6); % Emergency-Break
+            elseif safety(i)
+                addpoints(state_line, i, 1); % Use Safety-Confidence    
             end
-        end     
+        elseif exist('FSM_states', 'var')
+            switch FSM_states{i}
+                case "Free-Driving"
+                    addpoints(state_line, i, 0);
+                case "Safe-Confidence"
+                    addpoints(state_line, i, 1);
+                case "Safe-Yield"
+                    addpoints(state_line, i, 2);
+                case "Safe-Infeasible"
+                    addpoints(state_line, i, 3);
+                case "HOBCA-Unlocked"
+                    addpoints(state_line, i, 4);
+                case "HOBCA-Locked"
+                    addpoints(state_line, i, 5);
+                case "Emergency-Break"
+                    addpoints(state_line, i, 6);
+                otherwise
+                    error('Ploting FSM states: Undefined State');
+            end
+        end
 
 	    % Plot
 	    axes(ax1);
@@ -197,7 +219,6 @@ function F = plotExp(dataname, plt_params)
         end
         
         if exist('safety', 'var')
-            addpoints(h_s_l, i, double(safety(i)));
             if safety(i)
                 s_h = 'ON';
                 ws_stat = 'n/a';
@@ -214,12 +235,10 @@ function F = plotExp(dataname, plt_params)
                 end
             end
         elseif exist('FSM_states', 'var')
-            if any(FSM_states{i} == ["Safe-Confidence", "Safe-Infeasible"])
-                addpoints(h_s_l, i, 1);
+            if any(FSM_states{i} == ["Safe-Confidence", "Safe-Yield", "Safe-Infeasible"])
                 ws_stat = 'n/a';
                 sol_stat = 'n/a';
             else
-                addpoints(h_s_l, i, 0);
                 ws_stat = 'n/a';
                 sol_stat = sol_stats{i}.return_status;
                 if exist('ws_stats', 'var')
@@ -324,7 +343,7 @@ function F = plotExp(dataname, plt_params)
 	    axis equal
 	    axis(map_dim);
 
-	    axes(ax2)
+	    axes(ax_score)
 	    axis auto
 	    axis(prob_dim);
         

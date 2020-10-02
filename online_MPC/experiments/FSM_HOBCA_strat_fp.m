@@ -235,7 +235,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp(exp_num, datagen)
         tv_obs(1,:) = get_car_poly_obs(TV_pred, TV.width, TV.length);
         
         % Get target vehicle trajectory relative to ego vehicle state
-        if any(FSM.state == ["Safe-Confidence", "Safe-Infeasible"]) || EV_v*cos(EV_th) <= 0
+        if any(FSM.state == ["Safe-Confidence", "Safe-Yield", "Safe-Infeasible"]) || EV_v*cos(EV_th) <= 0
             tmp = [EV_x; EV_y; EV_th; 0; EV_v*sin(EV_th)];
             rel_state = TV_pred - tmp;
         else
@@ -268,8 +268,8 @@ function [col, T_final] = FSM_HOBCA_strat_fp(exp_num, datagen)
             % likelihood
             EV_x_ref = EV_x + [0:N]*dt*v_ref;
             EV_v_ref = max(score)*v_ref*ones(1, N+1);
-        elseif any(FSM.state == ["Free-Driving", "Safe-Confidence", "Safe-Infeasible", "Emergency-Break"])
-            % If stratygy is Safe_Confidence, Safe_Infeasible, EB
+        elseif any(FSM.state == ["Free-Driving", "Safe-Confidence", "Safe-Yield", "Safe-Infeasible", "Emergency-Break"])
+            % If stratygy is Safe_Confidence, Safe-Yield, Safe_Infeasible, EB
             EV_x_ref = EV_x + [0:N]*dt*v_ref;
             EV_v_ref = v_ref*ones(1, N+1);
         else
@@ -366,7 +366,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp(exp_num, datagen)
         exp_states.feas = feas;
         strategy = FSM.state_transition(exp_states);
 
-        if any(FSM.state == ["Safe-Confidence", "Safe-Infeasible"])
+        if any(FSM.state == ["Safe-Confidence", "Safe-Yield", "Safe-Infeasible"])
 
             % For safety controller v1
             safety_control = safety_control.set_acc_ref(TV_v(1)*cos(TV_th(1)));
@@ -388,7 +388,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp(exp_num, datagen)
             z_pred = z_obca;
             u_pred = u_obca;
             fprintf('Applying HOBCA control\n')
-        elseif any(FSM.state == ["Safe-Confidence", "Safe-Infeasible"])
+        elseif any(FSM.state == ["Safe-Confidence", "Safe-Yield", "Safe-Infeasible"])
             % Assume safety control is applied for one time step then no
             % control action is applied for rest of horizon
             u_pred = [u_safe zeros(n_u, N-1)];
