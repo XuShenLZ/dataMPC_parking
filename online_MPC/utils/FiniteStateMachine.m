@@ -341,7 +341,8 @@ classdef FiniteStateMachine < handle
 			[~, max_idx] = max(score);
 			strategy_tmp = self.strategy_names(max_idx);
 
-			if max(score) > self.confidence_thresh && strategy_tmp == "Yield"
+			% if max(score) > self.confidence_thresh && strategy_tmp == "Yield"
+			if strategy_tmp == "Yield"
 				output = true;
 			else
 				output = false;

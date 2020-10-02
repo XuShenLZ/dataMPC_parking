@@ -1,14 +1,14 @@
 %% FSM_HOBCA_strat_fp: Finite State Machine based strat HOBCA
 % exp_num (int, 1-486): The exp_num going to be evaluated
-% datagen (boolean): whether this is doing datagen or not
-function [col, T_final] = FSM_HOBCA_strat_fp(exp_num, datagen)
+% data_gen (boolean): whether this is doing datagen or not
+function [col, T_final] = FSM_HOBCA_strat_fp(exp_num, data_gen)
     
     tExp = tic;
 
     sys_time = datestr(now,'yyyy-mm-dd_HH-MM');
     filename = 'FSM_HOBCA_strat_fp';
 
-    if datagen
+    if data_gen
         if ~isfolder('../datagen/')
             mkdir('../datagen')
         end
@@ -470,7 +470,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp(exp_num, datagen)
 
     fprintf('\n=================== Complete ==================\n')
 
-    if datagen
+    if data_gen
         fpath = sprintf('../datagen/%s_Exp%d_Col%d_%s.mat', filename, exp_num, col, sys_time);
     else
         diary off

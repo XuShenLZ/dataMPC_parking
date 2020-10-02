@@ -6,7 +6,7 @@ clc
 pathsetup();
 
 all_nums = 486;
-datagen = true;
+data_gen = true;
 
 all_col = zeros(1, all_nums);
 
@@ -17,7 +17,7 @@ all_times = zeros(1, all_nums);
 parfor exp_num = 1:all_nums
 	fprintf('Solving exp_num = %d\n', exp_num);
     try
-        [col, T_final] = FSM_HOBCA_strat_fp(exp_num, datagen);
+        [col, T_final] = FSM_HOBCA_strat_fp(exp_num, data_gen);
 		all_col(exp_num) = col;
 		all_times(exp_num) = T_final;
     catch
