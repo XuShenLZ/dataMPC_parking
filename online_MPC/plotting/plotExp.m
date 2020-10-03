@@ -71,14 +71,6 @@ function F = plotExp(dataname, plt_params)
 	t_Y = [];
 	t_h_feas = []; t_h_safe = [];
 
-	phi = linspace(0, 2*pi, 200);
-	coll_bound_x = zeros(1, 200);
-	coll_bound_y = zeros(1, 200);
-	for i = 1:length(phi)
-	    [x_b, y_b, ~, ~] = get_collision_boundary_point(0, 0, phi(i), TV.width, TV.length, r);
-	    coll_bound_x(i) = x_b;
-	    coll_bound_y(i) = y_b;
-	end
 	rot = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 	F(T-N) = struct('cdata',[],'colormap',[]);
@@ -141,7 +133,12 @@ function F = plotExp(dataname, plt_params)
 	ylabel('Score')
 	axis(prob_dim)
 	grid on
-
+    
+    % Placeholder for plotting collision boundary
+    phi = linspace(0, 2*pi, 200);
+    coll_bound_x = zeros(1, 200);
+    coll_bound_y = zeros(1, 200);
+                    
     for i = 1:T-N
         % Delete lines and patches from last iteration
 	    delete(p_EV); delete(l_EV); delete(p_OEV); delete(l_OEV); 
@@ -311,6 +308,16 @@ function F = plotExp(dataname, plt_params)
             if plt_hyp && exist('hyps', 'var')
                 hyp = hyps{i};
                 if ~isnan(hyp{j}.pos)
+                    for k = 1:length(phi)
+                        if exist('vel_dirs', 'var') && exist('scalings', 'var')
+                            [x_b, y_b, ~, ~] = get_collision_boundary_point_tight_inflated(0, 0, phi(k), TV.width, TV.length, r, vel_dirs(1,j,i), scalings(1,j,i));
+                        else
+                            [x_b, y_b, ~, ~] = get_collision_boundary_point_tight(0, 0, phi(k), TV.width, TV.length, r);
+                        end
+                        coll_bound_x(k) = x_b;
+                        coll_bound_y(k) = y_b;
+                    end
+    
                     coll_bound_global = rot(TV.heading(i+j-1))*[coll_bound_x; coll_bound_y] + [TV.x(i+j-1); TV.y(i+j-1)];
                     l_TV = [l_TV plot(coll_bound_global(1,:), coll_bound_global(2,:), 'color', cmap(j,:))];
                     if hyp{j}.w(2) == 0
