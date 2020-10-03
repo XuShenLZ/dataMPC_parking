@@ -267,7 +267,8 @@ function [col, T_final] = FSM_HOBCA_strat_fp(exp_num, data_gen)
             % If strategy is HOBCA (lock/unlock), discount reference velocity based on max
             % likelihood
             EV_x_ref = EV_x + [0:N]*dt*v_ref;
-            EV_v_ref = max(score)*v_ref*ones(1, N+1);
+            % EV_v_ref = max(score)*v_ref*ones(1, N+1);
+            EV_v_ref = v_ref*ones(1, N+1);
         elseif any(FSM.state == ["Free-Driving", "Safe-Confidence", "Safe-Yield", "Safe-Infeasible", "Emergency-Break"])
             % If stratygy is Safe_Confidence, Safe-Yield, Safe_Infeasible, EB
             EV_x_ref = EV_x + [0:N]*dt*v_ref;
