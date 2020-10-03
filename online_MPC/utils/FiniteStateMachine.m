@@ -83,9 +83,9 @@ classdef FiniteStateMachine < handle
 					elseif self.toSafeYield(score, EV_curr, TV_pred)
 						state_next = "Safe-Yield";
 						strategy_next = "Yield";
-					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
-						state_next = "Safe-Infeasible";
-						strategy_next = "Yield";
+					% elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
+					% 	state_next = "Safe-Infeasible";
+					% 	strategy_next = "Yield";
 					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
 
@@ -112,9 +112,9 @@ classdef FiniteStateMachine < handle
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";
-					elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
-						state_next = "Safe-Infeasible";
-						strategy_next = "Yield";
+					% elseif self.toSafeInfeas(score, feas, EV_curr, TV_pred)
+					% 	state_next = "Safe-Infeasible";
+					% 	strategy_next = "Yield";
 					elseif self.toHOBCA(score, feas, EV_curr, TV_pred)
 						state_next = "HOBCA-Unlocked";
 
@@ -363,7 +363,8 @@ classdef FiniteStateMachine < handle
 			[~, max_idx] = max(score);
 			strategy_tmp = self.strategy_names(max_idx);
 
-			if (max(score) > self.confidence_thresh) && (strategy_tmp ~= "Yield") && (~feas)
+			% if (max(score) > self.confidence_thresh) && (strategy_tmp ~= "Yield") && (~feas)
+			if ~feas
 				output = true;
 			else
 				output = false;
