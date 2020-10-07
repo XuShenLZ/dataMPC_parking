@@ -43,7 +43,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     y_ref = EV.ref_y; % Reference y
     r = sqrt(EV.width^2 + EV.length^2)/2; % Collision buffer radius
     confidence_thresh = 0.55;
-    lock_steps = 3;
+    lock_steps = 20;
 
     strategy_names = ["Left", "Right", "Yield"];
 
@@ -74,9 +74,9 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     R = diag([1 1]);
 
     u_u = [0.5; 1.5];
-    u_l = [-0.5; -1.5];
+    u_l = [-0.5; -2.5];
     du_u = [0.6; 5];
-    du_l = [-0.6; -5];
+    du_l = [-0.6; -8];
 
     d_min = 0.01; %0.001;
 
@@ -295,7 +295,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
         z_detect = z_ref; % Use the ref to construct hpp
         ref_col = [];
         
-        scale_mult = 3;
+        scale_mult = 1;
         for j = 1:N+1
             scaling = max(1, scale_mult*abs(TV_v(j))/v_ref);
             vel_dir = sign(TV_v(j));

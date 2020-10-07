@@ -52,6 +52,8 @@ classdef FiniteStateMachine < handle
 				case "Free-Driving"
 					if self.toEnd(t, EV_curr)
 						state_next = "End";
+					elseif self.toFD(t, EV_curr, TV_pred)
+						state_next = "Free-Driving";
 					elseif self.toSafeCon(score, EV_curr, TV_pred)
 						state_next = "Safe-Confidence";
 						strategy_next = "Yield";

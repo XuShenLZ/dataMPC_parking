@@ -17,7 +17,8 @@ all_times = zeros(1, all_nums);
 parfor exp_num = 1:all_nums
 	fprintf('Solving exp_num = %d\n', exp_num);
     try
-        [col, T_final] = FSM_HOBCA_strat_fp(exp_num, data_gen);
+        % [col, T_final] = FSM_HOBCA_strat_fp(exp_num, data_gen);
+        [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen);
 		all_col(exp_num) = col;
 		all_times(exp_num) = T_final;
     catch
@@ -26,14 +27,14 @@ parfor exp_num = 1:all_nums
     end
 end
 
-filename = sprintf('../datagen/0STATS_FSM_hobca_strat_%s.mat', datestr(now,'yyyy-mm-dd_HH-MM'));
+filename = sprintf('../datagen/0STATS_FSM_hobca_strat_inflated_%s.mat', datestr(now,'yyyy-mm-dd_HH-MM'));
 save(filename, 'all_col', 'unknown_error', 'all_times')
 
 fprintf('Stats saved as: %s, datagen of FSM_HOBCA_strat completed.\n', filename)
 
 %% Analysis
 strat_old = load('../datagen/0STATS_hobca_strat_2020-09-22_02-19.mat');
-strat_FSM = load('../datagen/0STATS_FSM_hobca_strat_2020-09-29_21-15.mat');
+strat_FSM = load('../datagen/0STATS_FSM_hobca_strat_inflated1_lock20_ulim_2.5_8_2020-10-04_22-46.mat');
 naive = load('../datagen/0STATS_hobca_naive_2020-09-22_03-11.mat');
 
 naive_col_free = find(naive.all_col == 0);
@@ -66,13 +67,15 @@ disp('FSM Produces unknown errors')
 disp(find(strat_FSM.unknown_error == 1))
 
 figure
-histogram(naive.all_times(naive_col_free), 30, 'DisplayName', 'Naive')
+histogram(naive.all_times(naive_col_free), 30, 'DisplayName', 'Naive HOBCA')
 hold on
-histogram(strat_old.all_times(strat_old_col_free), 30, 'DisplayName', 'Strat Old')
-hold on
-histogram(strat_FSM.all_times(strat_FSM_col_free), 30, 'DisplayName', 'Strat FSM')
+% histogram(strat_old.all_times(strat_old_col_free), 30, 'DisplayName', 'Strat Old')
+% hold on
+histogram(strat_FSM.all_times(strat_FSM_col_free), 30, 'DisplayName', 'Data-Driven FSM')
 legend
 title('Task Time Distribution')
+xlabel('Time Steps')
+ylabel('Number of Cases')
 
 
 %% Generate Movies with Collision
