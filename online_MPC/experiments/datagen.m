@@ -67,11 +67,11 @@ disp('FSM Produces unknown errors')
 disp(find(strat_FSM.unknown_error == 1))
 
 figure
-histogram(naive.all_times(naive_col_free), 30, 'DisplayName', 'Naive HOBCA')
+histogram(naive.all_times(naive_col_free), 'BinWidth', 30, 'DisplayName', 'Naive HOBCA')
 hold on
 % histogram(strat_old.all_times(strat_old_col_free), 30, 'DisplayName', 'Strat Old')
 % hold on
-histogram(strat_FSM.all_times(strat_FSM_col_free), 30, 'DisplayName', 'Data-Driven FSM')
+histogram(strat_FSM.all_times(strat_FSM_col_free), 'BinWidth', 30, 'DisplayName', 'Data-Driven FSM')
 legend
 title('Task Time Distribution')
 xlabel('Time Steps')
@@ -134,3 +134,38 @@ for exp_num = exp_nums
         fprintf('Exp %d file was not found. \n', exp_num)
     end
 end
+
+%% Obtain the Forces Pro Solving time
+fpath = '../datagen/1006_inflate1_lock20_ulim_2.5_8/';
+files = dir(fpath);
+all_ws_solve_times = [];
+all_opt_solve_times = [];
+
+for i = 3:length(files)
+   fname = [fpath, files(i).name];
+   vars = load(fname, 'ws_solve_times', 'opt_solve_times');
+   all_ws_solve_times = [all_ws_solve_times; vars.ws_solve_times];
+   all_opt_solve_times = [all_opt_solve_times; vars.opt_solve_times];
+end
+
+zero_idxs = find(all_opt_solve_times == 0);
+all_ws_solve_times(zero_idxs) = [];
+all_opt_solve_times(zero_idxs) = [];
+total_solve_times = all_ws_solve_times + all_opt_solve_times;
+
+fprintf('Warm Start Problem: Mean Solving Time = %f, Max Solving Time = %f \n', mean(all_ws_solve_times), max(all_ws_solve_times));
+
+fprintf('Main Problem: Mean Solving Time = %f, Max Solving Time = %f \n', mean(all_opt_solves_times), max(all_opt_solves_times));
+
+fprintf('Total: Mean Solving Time = %f, Max Solving Time = %f \n', mean(total_solve_times), max(total_solve_times));
+
+
+figure
+histogram(all_ws_solve_times * 1000, 'DisplayName', 'Warm Start')
+hold on
+histogram(all_opt_solves_times * 1000, 'DisplayName', 'Main Opt')
+hold on
+histogram(total_solve_times * 1000, 'DisplayName', 'Total')
+legend
+title('Forces Pro Solving Time')
+xlabel('Time (ms)')
