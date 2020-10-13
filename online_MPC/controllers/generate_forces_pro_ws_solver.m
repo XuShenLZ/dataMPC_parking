@@ -41,7 +41,7 @@ function generate_forces_pro_ws_solver(params)
     ws_codeopts = getOptions(params.name);
 %     ws_codeopts.maxit = 1000;
     ws_codeopts.overwrite = 1;
-    ws_codeopts.printlevel = 2;
+    ws_codeopts.printlevel = 1;
     ws_codeopts.optlevel = params.optlevel;
     ws_codeopts.BuildSimulinkBlock = 0;
     ws_codeopts.cleanup = 0;

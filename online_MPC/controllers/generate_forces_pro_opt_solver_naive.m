@@ -110,7 +110,7 @@ function generate_forces_pro_opt_solver_naive(params)
     opt_codeopts = getOptions(params.name);
 %     opt_codeopts.maxit = 300;
     opt_codeopts.overwrite = 1;
-    opt_codeopts.printlevel = 2;
+    opt_codeopts.printlevel = 1;
     opt_codeopts.optlevel = params.optlevel;
     opt_codeopts.BuildSimulinkBlock = 0;
     opt_codeopts.cleanup = 0;
