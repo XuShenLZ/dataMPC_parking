@@ -95,7 +95,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
         tv_obs{3,i}.b = -lane_width/2;
     end
 
-    ws_params.name = 'FP_ws_solver_strat';
+    ws_params.name = 'ws_solver_strat';
     ws_params.N = N;
     ws_params.n_x = n_z;
     ws_params.n_u = n_u;
@@ -106,7 +106,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     ws_params.g = EV.g;
     ws_params.optlevel = 3;
 
-    opt_params.name = 'FP_opt_solver_strat';
+    opt_params.name = 'opt_solver_strat';
     opt_params.N = N;
     opt_params.n_x = n_z;
     opt_params.n_u = n_u;
@@ -126,13 +126,13 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     opt_params.dt = dt;
     opt_params.optlevel = 3;
 
-    if ~exist('forces_pro_gen', 'dir')
-        mkdir('forces_pro_gen')
+    if ~exist('forces_pro_gen_strat', 'dir')
+        mkdir('forces_pro_gen_strat')
     end
-    cd forces_pro_gen
+    cd forces_pro_gen_strat
     obca_controller = hpp_obca_controller_FP(false, ws_params, opt_params);
     cd ..
-    addpath('forces_pro_gen')
+    addpath('forces_pro_gen_strat')
 
     % Instantiate safety controller
     d_lim = [u_l(1), u_u(1)];

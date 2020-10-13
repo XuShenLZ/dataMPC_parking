@@ -1,7 +1,7 @@
 # Forces Pro Generated File and Folder
 FP_*
 *.forces
-*forces_pro_gen/
+*forces_pro_gen*/
 stdout_temp
 
 # Sublime
