@@ -38,7 +38,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     
     N = 20; % Prediction horizon
     dt = EV.dt; % Time step
-    T = 1500; % Max time
+    T = 300; % Max time
     T_tv = length(TV.t); % Length of TV data
     
     EV_L = 0.5334;
@@ -61,9 +61,11 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     EV.width = EV_W;
     EV.L = EV_L;
     EV.W = EV_W;
+    EV.ref_V = 0.5;
     
     x_max = 5; % The right most x coordinate
-    v_ref = EV.ref_v*scaling_factor; % Reference velocity
+%     v_ref = EV.ref_v*scaling_factor; % Reference velocity
+    v_ref = EV.ref_v;
     y_ref = EV.ref_y*scaling_factor; % Reference y
     r = sqrt(EV_W^2 + EV_L^2)/2; % Collision buffer radius
     confidence_thresh = 0.55;
@@ -161,7 +163,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
         mkdir('forces_pro_gen_strat')
     end
     cd forces_pro_gen_strat
-    obca_controller = hpp_obca_controller_FP(false, ws_params, opt_params);
+    obca_controller = hpp_obca_controller_FP(true, ws_params, opt_params);
     cd ..
     addpath('forces_pro_gen_strat')
 

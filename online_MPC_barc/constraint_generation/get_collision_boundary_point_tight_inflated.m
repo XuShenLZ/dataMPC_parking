@@ -20,7 +20,7 @@ function [x_b, y_b, H, h] = get_collision_boundary_point_tight_inflated(x, y, ph
     end
     
     if x > l_p+r || x < -(l_m+r)
-        error('Offset origin outside of collision buffer')
+        warning('Offset origin outside of collision buffer')
     end
     
     % Angular position should be between 0 and 2*pi
@@ -247,7 +247,7 @@ function [x_b, y_b, H, h] = get_collision_boundary_point_tight_inflated(x, y, ph
             equiv_phi = 3*pi/2;
         end
     else
-        error('Offset origin outside of collision buffer')
+        warning('Offset origin outside of collision buffer')
     end
     
     phi = equiv_phi;

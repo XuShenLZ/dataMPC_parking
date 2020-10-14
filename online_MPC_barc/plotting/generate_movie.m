@@ -1,13 +1,14 @@
 close all
 clear all
 
+%%
 % Plot and save movie
 
-% name = 'FSM_HOBCA_naive_fp_Exp4_Col1_2020-10-13_14-08';
-% fname = sprintf('../data/%s.mat', name);
+name = 'FSM_HOBCA_strat_fp_Exp4_Col1_2020-10-13_19-22';
+fname = sprintf('../data/%s.mat', name);
 
-name = 'tmp';
-fname = sprintf('../experiments/%s.mat', name);
+% name = 'tmp';
+% fname = sprintf('../experiments/%s.mat', name);
 
 plt_params.visible = 'on'; % or 'off' to shut down real time display
 plt_params.plt_hyp = true;
@@ -20,3 +21,17 @@ plt_params.mv_save = true;
 plt_params.mv_name = name;
 
 F = plotExp(fname, plt_params);
+
+%%
+name = 'tracking_fp_Exp44_2020-10-13_22-51';
+fname = sprintf('../data/%s.mat', name);
+
+plt_params.visible = 'on'; % or 'off' to shut down real time display
+plt_params.plt_ref = true;
+plt_params.plt_sol = true;
+plt_params.plt_preds = true;
+plt_params.plt_tv_preds = false;
+plt_params.mv_save = true;
+plt_params.mv_name = name;
+
+F = plotTracking(fname, plt_params);
