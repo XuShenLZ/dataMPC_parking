@@ -3,8 +3,11 @@ clear all
 
 % Plot and save movie
 
-name = 'FSM_HOBCA_naive_fp_Exp4_Col1_2020-10-13_14-08';
-fname = sprintf('../data/%s.mat', name);
+% name = 'FSM_HOBCA_naive_fp_Exp4_Col1_2020-10-13_14-08';
+% fname = sprintf('../data/%s.mat', name);
+
+name = 'tmp';
+fname = sprintf('../experiments/%s.mat', name);
 
 plt_params.visible = 'on'; % or 'off' to shut down real time display
 plt_params.plt_hyp = true;
