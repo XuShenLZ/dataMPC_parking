@@ -44,14 +44,14 @@ function [z_opt, u_opt, mu_opt, lambda_opt, feas] = OBCA_tv(t0, N, dt, Obs, EV, 
 
 	for k = 1:N
         
-        constr = [constr, z(4, k) <= 1];
+        constr = [constr, z(4, k) <= 1.5];
 
 		constr = [constr, -0.6 <= u(1, k) <= 0.6];
-		constr = [constr, -0.5 <= u(2, k) <= 0.5];
+		constr = [constr, -2.5 <= u(2, k) <= 1.5];
 
 		if k < N
 			constr = [constr, -0.2 <= u(1, k+1) - u(1, k) <= 0.2];
-			constr = [constr, -0.3 <= u(2, k+1) - u(2, k) <= 0.3];
+			constr = [constr, -0.8 <= u(2, k+1) - u(2, k) <= 0.5];
 		end
 
 		constr = [constr, z(:, k+1) == bikeFE_CoG(z(:,k), u(:, k), L, dt)];
@@ -76,10 +76,11 @@ function [z_opt, u_opt, mu_opt, lambda_opt, feas] = OBCA_tv(t0, N, dt, Obs, EV, 
 			constr = [constr, lambda_j'*A*A'*lambda_j == 1];
 		end
 
-		obj = obj + 0.01*u(1, k)^2 + 0.01*u(2, k)^2 ...
-				+ 0.1*(z(2, k+1) - ref_z(2, k))^2 ...
-				+ 0.1*(z(3, k+1) - ref_z(3, k))^2 ...
-				+ 0.1*(z(4, k+1) - ref_z(4, k))^2;
+		obj = obj + 1*u(1, k)^2 + 1*u(2, k)^2 ...
+				+ 10 *(z(1, k+1) - ref_z(1, k))^2 ...
+				+ 1 *(z(2, k+1) - ref_z(2, k))^2 ...
+				+ 1 *(z(3, k+1) - ref_z(3, k))^2 ...
+				+ 5 *(z(4, k+1) - ref_z(4, k))^2;
 	end
 
 	%% Assignment

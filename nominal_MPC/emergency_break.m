@@ -29,13 +29,13 @@ function [z_opt, u_opt, feas] = emergency_break(T_total, dt, EV, TV)
 		constr = [constr, z(:, k+1) == A*z(:, k) + B*u(1, k)];
 
 		% Input constraint
-		constr = [constr, -0.5 <= u(1, k) <= 0.5];
+		constr = [constr, -2.5 <= u(1, k) <= 1.5];
 		if k < N
-			constr = [constr, -0.3 <= u(1, k+1) - u(1, k) <= 0.3];
+			constr = [constr, -0.8 <= u(1, k+1) - u(1, k) <= 0.5];
 		end
 
 		% Speed constraint
-		constr = [constr, 0 <= z(2, k) <= 6];
+		constr = [constr, 0 <= z(2, k) <= 1.5];
 
 		% Objective
 		obj = obj + u(1, k)^2;

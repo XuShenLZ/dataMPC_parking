@@ -43,7 +43,7 @@ parfor exp_num = 1:length(ego_dims)
 	TV.length = barc.length;
 
 	TV.traj    = ego_trajectory{exp_num};
-	TV.t       = TV.traj(:, 1) * scale_ratio;
+	TV.t       = TV.traj(:, 1);
 	% Flip x and y
 	TV.x       = (TV.traj(:, 3) - map_offset(1)) * scale_ratio;
 	TV.y       = (TV.traj(:, 2) - map_offset(2)) * scale_ratio;
@@ -76,8 +76,8 @@ parfor exp_num = 1:length(ego_dims)
 	Obs = cell(3, T_total);
 	for t = 1:T_total
 		% Static Obstacles
-		Obs{1, t} = Polyhedron('A', [0  1], 'b', -3.5 * scale_ratio);
-		Obs{2, t} = Polyhedron('A', [0 -1], 'b', -3.5 * scale_ratio);
+		Obs{1, t} = Polyhedron('A', [0  1], 'b', -5 * scale_ratio);
+		Obs{2, t} = Polyhedron('A', [0 -1], 'b', -5 * scale_ratio);
 
 		center_x = TV.x(t);
 		center_y = TV.y(t);
