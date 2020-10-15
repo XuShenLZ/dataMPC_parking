@@ -20,7 +20,7 @@ function [z_opt, u_opt, mu_opt, lambda_opt, feas] = OBCA_tv(t0, N, dt, Obs, EV, 
 	offset = EV.offset;
 
 	z0 = EV.z0;
-	zF = [EV.goalPose; EV.goal_v];
+	zF = EV.goalPose;
 
 	ref_z = EV.ref_z;
 
@@ -35,18 +35,16 @@ function [z_opt, u_opt, mu_opt, lambda_opt, feas] = OBCA_tv(t0, N, dt, Obs, EV, 
 	constr = [constr, mu(:) >= 0];
 
 	% Initial State
-	constr = [constr, z(1, 1) == z0(1) - offset*cos(z0(3))];
-	constr = [constr, z(2, 1) == z0(2) - offset*sin(z0(3))];
-	constr = [constr, z(3:4, 1) == z0(3:4)];
+	constr = [constr, z(:, 1) == z0];
 
 	% Terminal State
-	constr = [constr, z(1, N+1) == zF(1) - offset*cos(zF(3))];
-	constr = [constr, z(2, N+1) == zF(2) - offset*sin(zF(3))];
-	constr = [constr, z(3:4, N+1) == zF(3:4)];
+	constr = [constr, z(:, N+1) == zF];
 
 	obj = 0;
 
 	for k = 1:N
+        
+        constr = [constr, z(4, k) <= 1];
 
 		constr = [constr, -0.6 <= u(1, k) <= 0.6];
 		constr = [constr, -0.5 <= u(2, k) <= 0.5];
@@ -56,9 +54,9 @@ function [z_opt, u_opt, mu_opt, lambda_opt, feas] = OBCA_tv(t0, N, dt, Obs, EV, 
 			constr = [constr, -0.3 <= u(2, k+1) - u(2, k) <= 0.3];
 		end
 
-		constr = [constr, z(:, k+1) == bikeFE(z(:,k), u(:, k), L, dt)];
+		constr = [constr, z(:, k+1) == bikeFE_CoG(z(:,k), u(:, k), L, dt)];
 
-		t = [z(1,k) + offset*cos(z(3,k)); z(2,k) + offset*sin(z(3,k))];
+		t = [z(1,k); z(2,k)];
 		% t = [z_WS(1,k); z_WS(2,k)];
 		R = [cos(z(3,k)), -sin(z(3,k)); sin(z(3,k)), cos(z(3,k))];
 
@@ -131,13 +129,7 @@ function [z_opt, u_opt, mu_opt, lambda_opt, feas] = OBCA_tv(t0, N, dt, Obs, EV, 
 
 	end
 
-	zz = value(z);
-
-	for k = 1:N+1
-		z_opt(1, k)   = zz(1, k) + offset*cos(zz(3, k));
-		z_opt(2, k)   = zz(2, k) + offset*sin(zz(3, k));
-		z_opt(3:4, k) = zz(3:4, k);
-	end
+	z_opt = value(z);
 
 	u_opt = value(u);
 	mu_opt = value(mu);

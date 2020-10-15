@@ -23,7 +23,7 @@ save(dataset_filename, 'training_set')
 function [training_data] = par_strategy_gen(exp_num, N)
 	fprintf('Generating strategy for Exp_num #%d\n', exp_num)
 
-	exp_file = strcat('../data/exp_num_', num2str(exp_num), '.mat');
+	exp_file = strcat('../barc_data/exp_num_', num2str(exp_num), '.mat');
 	load(exp_file)
 
 	T = length(TV.t); % Length of data
@@ -67,7 +67,7 @@ function [training_data] = par_strategy_gen(exp_num, N)
 	    training_data(i).X = rel_state;
 	end
 	    
-	if problem_type == 'Emergency Break'
+	if problem_type == 'Emergency Break' || problem_type == 'Speed Controller'
 	    label = "Y"; % Yield
 	elseif problem_type == 'Successful Maneuver' || problem_type == 'Collision Free'
 	    if rel_y > 0

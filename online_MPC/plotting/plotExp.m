@@ -269,7 +269,7 @@ function F = plotExp(dataname, plt_params)
             end
         end
         
-	    t_h_feas = text(0.02, 0.95, sprintf('HOBCA Online MPC (ws): %s, (sol): %s', ws_stat, sol_stat), 'color', 'b', 'interpreter', 'none', 'Units', 'normalized');
+	    t_h_feas = text(0.02, 0.85, sprintf('HOBCA Online MPC (ws): %s, (sol): %s', ws_stat, sol_stat), 'color', 'b', 'interpreter', 'none', 'Units', 'normalized');
 
         if exist('ebrake', 'var') && exist('safety', 'var')
     	    t_h_safe = text(0.02, 0.9, sprintf('Safety: %s, E-Brake: %s', s_h, e_h), 'color', 'b', 'Units', 'normalized');
