@@ -59,7 +59,7 @@ function F = plotTracking(dataname, plt_params)
 	ax_h_v = axes('Position',[0.5 0.75 0.45 0.2]);
 	h_v_l = animatedline(ax_h_v, 'color', '#0072BD', 'linewidth', 2);
 	ylabel('v')
-	axis([1 T-N -3 3])
+	xlim([1 T-N])
 
 	ax_h_d = axes('Position',[0.5 0.52 0.45 0.2]);
 	h_d_l = animatedline(ax_h_d, 'color', '#0072BD', 'linewidth', 2);

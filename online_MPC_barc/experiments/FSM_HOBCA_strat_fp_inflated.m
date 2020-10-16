@@ -63,9 +63,9 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     EV.W = EV_W;
     EV.ref_V = 0.5;
     
-    x_max = 5; % The right most x coordinate
-%     v_ref = EV.ref_v*scaling_factor; % Reference velocity
-    v_ref = EV.ref_v;
+    x_max = 30*scaling_factor; % The right most x coordinate
+    v_ref = EV.ref_v*scaling_factor; % Reference velocity
+%     v_ref = EV.ref_v;
     y_ref = EV.ref_y*scaling_factor; % Reference y
     r = sqrt(EV_W^2 + EV_L^2)/2; % Collision buffer radius
     confidence_thresh = 0.55;
@@ -113,8 +113,6 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
 
     d_min = 0.01; %0.001;
 
-    % n_obs = 1;
-    % n_ineq = [4];
     n_obs = 3;
     n_ineq = [4,1,1];
     d_ineq = 2;

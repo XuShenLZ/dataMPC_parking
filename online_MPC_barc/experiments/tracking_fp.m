@@ -61,14 +61,15 @@ function [col, T_final] = tracking_fp(exp_num, data_gen)
     
     lane_width = 1;
     
-    % Instantiate obca controller
-    % Q = diag([0.05 0.1 0.1 0.5]);
-%     Q = diag([10 1 1 5]);
-    Q = 10*eye(4);
-    R = diag([1 1]);
-
-    u_u = [0.5; 1.5];
-    u_l = [-0.5; -2.5];
+    % Instantiate tracking controller
+    Q = [10, 10, 10, 10];
+    R = [1, 1];
+    R_d = [1, 10];
+    
+    z_u = [10; 10; 10; 1];
+    z_l = [-10; -10; -10; -1];
+    u_u = [0.35; 1];
+    u_l = [-0.35; -1];
     du_u = [0.6; 5];
     du_l = [-0.6; -8];
 
@@ -78,6 +79,9 @@ function [col, T_final] = tracking_fp(exp_num, data_gen)
     opt_params.n_u = n_u;
     opt_params.Q = Q;
     opt_params.R = R;
+    opt_params.R_d = R_d;
+    opt_params.z_u = z_u;
+    opt_params.z_l = z_l;
     opt_params.u_u = u_u;
     opt_params.u_l = u_l;
     opt_params.du_u = du_u;

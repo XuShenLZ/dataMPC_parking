@@ -20,21 +20,43 @@ classdef tracking_controller_FP
             n_x = self.opt_params.n_x;
             n_u = self.opt_params.n_u;
             
+            z_u = self.opt_params.z_u;
+            z_l = self.opt_params.z_l;
+            u_u = self.opt_params.u_u;
+            u_l = self.opt_params.u_l;
+            
+            Q = self.opt_params.Q;
+            R = self.opt_params.R;
+            R_d = self.opt_params.R_d;
+            
             x0 = [];
             params = [];
+            ub = [];
+            lb = [];
             for k = 1:self.opt_params.N+1
-                params = [params; z_ref(:,k)];
-                    
                 if k == self.opt_params.N+1
                     x0 = [x0; z_ws(:,k)];
+                    ub = [ub; z_u];
+                    lb = [lb; z_l];
+                    params = [params; z_ref(:,k); Q'];
+                elseif k == 1
+                    x0 = [x0; z_ws(:,k); u_ws(:,k); u_prev];
+                    ub = [ub; u_u];
+                    lb = [lb; u_l];
+                    params = [params; z_ref(:,k); Q'; R'; R_d'];
                 else
-                    x0 = [x0; z_ws(:,k); u_ws(:,k)];
+                    x0 = [x0; z_ws(:,k); u_ws(:,k); u_ws(:,k-1)];
+                    ub = [ub; z_u; u_u; u_u];
+                    lb = [lb; z_l; u_l; u_l];
+                    params = [params; z_ref(:,k); Q'; R'; R_d'];
                 end
             end
             
             problem.x0 = x0;
             problem.all_parameters = params;
-            problem.xinit = z_s;
+            problem.xinit = [z_s; u_prev];
+            problem.ub = ub;
+            problem.lb = lb;
             
             % Solve
             if exist(strcat(self.opt_params.name, '.m'), 'file')
