@@ -46,8 +46,8 @@ function generate_forces_pro_ws_solver(params)
     ws_codeopts.BuildSimulinkBlock = 0;
     ws_codeopts.cleanup = 0;
     ws_codeopts.platform = 'Generic';
-%     ws_codeopts.gnu = 1;
-%     ws_codeopts.sse = 1;
+    ws_codeopts.gnu = 1;
+    ws_codeopts.sse = 1;
     
     ws_codeopts.nlp.linear_solver = 'symm_indefinite';
     ws_codeopts.nlp.ad_tool = 'casadi-351';

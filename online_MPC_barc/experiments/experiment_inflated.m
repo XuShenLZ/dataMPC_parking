@@ -11,7 +11,7 @@ datagen = false;
 % [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, datagen);
 
 %% Use the FSM naive HOBCA
-% [col, T_final] = FSM_HOBCA_naive_fp(exp_num, datagen);
+[col, T_final] = FSM_HOBCA_naive_fp(exp_num, datagen);
 
 %% Test tracking NMPC
-tracking_fp(exp_num, datagen);
+% tracking_fp(exp_num, datagen);

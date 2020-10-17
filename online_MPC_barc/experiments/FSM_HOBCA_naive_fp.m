@@ -79,19 +79,26 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
 
     % Instantiate obca controller
     % Q = diag([0.05 0.1 0.1 0.5]);
-    Q = diag([10 1 1 5]);
-    R = diag([1 1]);
-
-    u_u = [0.5; 1.5];
-    u_l = [-0.5; -2.5];
+    Q = [10 1 1 5];
+    R = [1 1];
+    R_d = [0.01, 0.01];
+    
+%     z_u = [10; 10; 10; 1];
+%     z_l = [-10; -10; -10; -1];
+    z_u = [inf; inf; inf; inf];
+    z_l = [-inf; -inf; -inf; -inf];
+%     u_u = [0.35; 1];
+%     u_l = [-0.35; -1];
+    u_u = [inf; inf];
+    u_l = [-inf; -inf];
     du_u = [0.6; 5];
     du_l = [-0.6; -8];
-
+%     du_u = [inf; inf];
+%     du_l = [-inf; -inf];
+    
     d_min = 0.01;
     % d_min = 0.001;
 
-    % n_obs = 1;
-    % n_ineq = [4];
     n_obs = 3;
     n_ineq = [4,1,1];
     d_ineq = 2;
@@ -128,6 +135,9 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
     opt_params.d_min = d_min;
     opt_params.Q = Q;
     opt_params.R = R;
+    opt_params.R_d = R_d;
+    opt_params.z_u = z_u;
+    opt_params.z_l = z_l;
     opt_params.u_u = u_u;
     opt_params.u_l = u_l;
     opt_params.du_u = du_u;
@@ -140,7 +150,7 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
         mkdir('forces_pro_gen_naive')
     end
     cd forces_pro_gen_naive
-    obca_controller = obca_controller_FP(false, ws_params, opt_params);
+    obca_controller = obca_controller_FP(true, ws_params, opt_params);
     cd ..
     addpath('forces_pro_gen_naive')
 

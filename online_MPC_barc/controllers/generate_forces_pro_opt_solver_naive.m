@@ -1,5 +1,5 @@
 function generate_forces_pro_opt_solver_naive(params)
-    global n_x n_u n_obs n_ineq d_ineq m_ineq N_ineq M_ineq G g Q R dynamics
+    global n_x n_u n_obs n_ineq d_ineq m_ineq N_ineq M_ineq G g dynamics
     
     n_x = params.n_x;
     n_u = params.n_u;
@@ -9,13 +9,9 @@ function generate_forces_pro_opt_solver_naive(params)
     G = params.G;
     g = params.g;
     m_ineq = size(G,1); % Number of constraints for controlled object
-    Q = params.Q;
-    R = params.R;
     dt = params.dt;
     dynamics = params.dynamics;
     d_min = params.d_min;
-    u_l = params.u_l;
-    u_u = params.u_u;
     du_l = params.du_l;
     du_u = params.du_u;
     
@@ -31,23 +27,25 @@ function generate_forces_pro_opt_solver_naive(params)
     nh = zeros(opt_model.N,1); 
     npar = zeros(opt_model.N,1); 
     objective = cell(opt_model.N,1);
-    ls_objective = cell(opt_model.N,1);
     eq = cell(opt_model.N-1,1);
     E = cell(opt_model.N-1,1);
     ineq = cell(opt_model.N,1);
     hu = cell(opt_model.N,1); 
     hl = cell(opt_model.N,1);
-    ub = cell(opt_model.N,1);
-    lb = cell(opt_model.N,1);
+%     ub = cell(opt_model.N,1);
+%     lb = cell(opt_model.N,1);
+    ubidx = cell(opt_model.N,1);
+    lbidx = cell(opt_model.N,1);
     
     for i = 1:opt_model.N-1
         objective{i} = @eval_opt_obj;
-        ls_objective{i} = @eval_opt_ls_obj;
         
         % [x_k, lambda_k, mu_k, u_k, u_km1]
         nvar(i) = n_x + N_ineq + M_ineq + n_u + n_u;
-        ub{i} = [inf*ones(n_x,1); inf*ones(N_ineq + M_ineq,1); u_u; u_u];
-        lb{i} = [-inf*ones(n_x,1); zeros(N_ineq + M_ineq,1); u_l; u_l];
+%         ub{i} = [inf*ones(n_x,1); inf*ones(N_ineq + M_ineq,1); u_u; u_u];
+%         lb{i} = [-inf*ones(n_x,1); zeros(N_ineq + M_ineq,1); u_l; u_l];
+        ubidx{i} = 1:nvar(i);
+        lbidx{i} = 1:nvar(i);
         
         % [obca_d, obca_norm, du]
         nh(i) = n_obs + n_obs + n_u;
@@ -55,8 +53,8 @@ function generate_forces_pro_opt_solver_naive(params)
         hu{i} = [inf*ones(n_obs,1); ones(n_obs,1); dt*du_u];
         hl{i} = [d_min*ones(n_obs,1); -inf*ones(n_obs,1); dt*du_l];
         
-        % [x_ref, obs_A, obs_b]
-        npar(i) = n_x + N_ineq*d_ineq + N_ineq;
+        % [x_ref, obs_A, obs_b, diag(Q), diag(R), diag(R_d)]
+        npar(i) = n_x + N_ineq*d_ineq + N_ineq + n_x + n_u + n_u;
         
         if i == opt_model.N-1
             % [dynamics, obca]
@@ -74,12 +72,13 @@ function generate_forces_pro_opt_solver_naive(params)
         end
     end
     objective{opt_model.N} = @eval_opt_obj_N;
-    ls_objective{opt_model.N} = @eval_opt_ls_obj_N;
     
     % [x_k, lambda_k, mu_k]
     nvar(opt_model.N) = n_x + N_ineq + M_ineq;
-    ub{opt_model.N} = [inf*ones(n_x,1); inf*ones(N_ineq + M_ineq,1)];
-    lb{opt_model.N} = [-inf*ones(n_x,1); zeros(N_ineq + M_ineq,1)];
+%     ub{opt_model.N} = [inf*ones(n_x,1); inf*ones(N_ineq + M_ineq,1)];
+%     lb{opt_model.N} = [-inf*ones(n_x,1); zeros(N_ineq + M_ineq,1)];
+    ubidx{opt_model.N} = 1:nvar(opt_model.N);
+    lbidx{opt_model.N} = 1:nvar(opt_model.N);
     
     % [obca_d, obca_norm]
     nh(opt_model.N) = n_obs + n_obs;
@@ -87,8 +86,8 @@ function generate_forces_pro_opt_solver_naive(params)
     hu{opt_model.N} = [inf*ones(n_obs,1); ones(n_obs,1)];
     hl{opt_model.N} = [d_min*ones(n_obs,1); -inf*ones(n_obs,1)];
     
-    % [x_ref, obs_A, obs_b]
-    npar(opt_model.N) = n_x + N_ineq*d_ineq + N_ineq;
+    % [x_ref, obs_A, obs_b, diag(Q)]
+    npar(opt_model.N) = n_x + N_ineq*d_ineq + N_ineq + n_x;
     
     opt_model.nvar = nvar;
     opt_model.neq = neq;
@@ -96,21 +95,24 @@ function generate_forces_pro_opt_solver_naive(params)
     opt_model.npar = npar;
 
     opt_model.objective = objective;
-    opt_model.LSobjective = ls_objective;
     opt_model.eq = eq;
     opt_model.E = E;
     opt_model.ineq = ineq;
     opt_model.hu = hu;
     opt_model.hl = hl;
-    opt_model.ub = ub;
-    opt_model.lb = lb;
+%     opt_model.ub = ub;
+%     opt_model.lb = lb;
+    opt_model.ub = [];
+    opt_model.lb = [];
+    opt_model.ubidx = ubidx;
+    opt_model.lbidx = lbidx;
     
     opt_model.xinitidx = [1:n_x, n_x+N_ineq+M_ineq+n_u+1:n_x+N_ineq+M_ineq+n_u+n_u];
     
     opt_codeopts = getOptions(params.name);
 %     opt_codeopts.maxit = 300;
     opt_codeopts.overwrite = 1;
-    opt_codeopts.printlevel = 1;
+    opt_codeopts.printlevel = 2;
     opt_codeopts.optlevel = params.optlevel;
     opt_codeopts.BuildSimulinkBlock = 0;
     opt_codeopts.cleanup = 0;
@@ -120,6 +122,7 @@ function generate_forces_pro_opt_solver_naive(params)
 
     opt_codeopts.nlp.ad_tool = 'casadi-351';
     opt_codeopts.nlp.linear_solver = 'symm_indefinite';
+    opt_codeopts.nlp.stack_parambounds = 1;
 
     opt_codeopts.nlp.TolStat = 1e-3;
     opt_codeopts.nlp.TolEq = 1e-3;
@@ -147,42 +150,31 @@ end
 
 % Stage cost
 function opt_obj = eval_opt_obj(z, p)
-    global N_ineq M_ineq n_x n_u Q R
+    global d_ineq N_ineq M_ineq n_x n_u
     
     x = z(1:n_x);
     u = z(n_x+N_ineq+M_ineq+1:n_x+N_ineq+M_ineq+n_u);
-    x_ref = p(1:n_x);
+    u_p = z(n_x+N_ineq+M_ineq+n_u+1:n_x+N_ineq+M_ineq+n_u+n_u);
     
+    x_ref = p(1:n_x);
+    Q = diag(p(n_x+N_ineq*d_ineq+N_ineq+1:n_x+N_ineq*d_ineq+N_ineq+n_x));
+    R = diag(p(n_x+N_ineq*d_ineq+N_ineq+n_x+1:n_x+N_ineq*d_ineq+N_ineq+n_x+n_u));
+    R_d = diag(p(n_x+N_ineq*d_ineq+N_ineq+n_x+n_u+1:n_x+N_ineq*d_ineq+N_ineq+n_x+n_u+n_u));
+    
+%     opt_obj = bilin(Q, x-x_ref, x-x_ref) + bilin(R, u, u) + bilin(R_d, u-u_p, u-u_p);
     opt_obj = bilin(Q, x-x_ref, x-x_ref) + bilin(R, u, u);
-end
-
-function opt_obj = eval_opt_ls_obj(z, p)
-    global N_ineq M_ineq n_x n_u Q R
-    
-    x = z(1:n_x);
-    u = z(n_x+N_ineq+M_ineq+1:n_x+N_ineq+M_ineq+n_u);
-    x_ref = p(1:n_x);
-    
-    opt_obj = mtimes(sqrtm(blkdiag(Q,R)), vertcat(x-x_ref,u));
 end
 
 % Terminal cost
 function opt_obj = eval_opt_obj_N(z, p)
-    global n_x Q
+    global d_ineq N_ineq n_x
     
     x = z(1:n_x);
+    
     x_ref = p(1:n_x);
+    Q = diag(p(n_x+N_ineq*d_ineq+N_ineq+1:n_x+N_ineq*d_ineq+N_ineq+n_x));
     
     opt_obj = bilin(Q, x-x_ref, x-x_ref);
-end
-
-function opt_obj = eval_opt_ls_obj_N(z, p)
-    global n_x Q
-    
-    x = z(1:n_x);
-    x_ref = p(1:n_x);
-    
-    opt_obj = mtimes(sqrtm(Q), x-x_ref);
 end
 
 % Equality constraints at each stage
