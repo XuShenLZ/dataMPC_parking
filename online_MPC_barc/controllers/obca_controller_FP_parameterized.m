@@ -1,4 +1,4 @@
-classdef obca_controller_FP
+classdef obca_controller_FP_parameterized
 	properties
         ws_params;
         opt_params;
@@ -13,7 +13,7 @@ classdef obca_controller_FP
     end
 
 	methods
-		function self = obca_controller_FP(regen, ws_params, opt_params)
+		function self = obca_controller_FP_parameterized(regen, ws_params, opt_params)
             self.ws_params = ws_params;
             self.opt_params = opt_params;
             
@@ -27,7 +27,7 @@ classdef obca_controller_FP
             if ~exist(strcat(opt_params.name, '.m'), 'file') || regen
                 fprintf('===============================================\n')
                 fprintf('Generating forces pro opt solver: %s\n', strcat(opt_params.name, '.m'))
-                generate_forces_pro_opt_solver_naive(opt_params);
+                generate_forces_pro_opt_solver_naive_parameterized(opt_params);
                 fprintf('\n')
             end
             

@@ -1,4 +1,4 @@
-function generate_forces_pro_opt_solver_naive(params)
+function generate_forces_pro_opt_solver_naive_parameterized(params)
     global n_x n_u n_obs n_ineq d_ineq m_ineq N_ineq M_ineq G g dynamics
     
     n_x = params.n_x;

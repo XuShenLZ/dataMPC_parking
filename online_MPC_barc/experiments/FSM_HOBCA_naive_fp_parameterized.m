@@ -150,7 +150,7 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
         mkdir('forces_pro_gen_naive')
     end
     cd forces_pro_gen_naive
-    obca_controller = obca_controller_FP(true, ws_params, opt_params);
+    obca_controller = obca_controller_FP_parameterized(true, ws_params, opt_params);
     cd ..
     addpath('forces_pro_gen_naive')
 
