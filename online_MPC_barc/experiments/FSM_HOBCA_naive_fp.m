@@ -78,23 +78,16 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
     EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
     % Instantiate obca controller
-    % Q = diag([0.05 0.1 0.1 0.5]);
     Q = [10 1 1 5];
     R = [1 1];
     R_d = [0.01, 0.01];
     
-%     z_u = [10; 10; 10; 1];
-%     z_l = [-10; -10; -10; -1];
-    z_u = [inf; inf; inf; inf];
-    z_l = [-inf; -inf; -inf; -inf];
-%     u_u = [0.35; 1];
-%     u_l = [-0.35; -1];
-    u_u = [inf; inf];
-    u_l = [-inf; -inf];
+    z_u = [10; 10; 10; 1];
+    z_l = [-10; -10; -10; -1];
+    u_u = [0.35; 1];
+    u_l = [-0.35; -1];
     du_u = [0.6; 5];
     du_l = [-0.6; -8];
-%     du_u = [inf; inf];
-%     du_l = [-inf; -inf];
     
     d_min = 0.01;
     % d_min = 0.001;

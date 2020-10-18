@@ -4,7 +4,7 @@ clc
 
 pathsetup();
 
-exp_num = 4;
+exp_num = 1;
 datagen = false;
 
 %% Use the FSM strat HOBCA

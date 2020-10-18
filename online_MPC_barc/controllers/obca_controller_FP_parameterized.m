@@ -110,13 +110,14 @@ classdef obca_controller_FP_parameterized
             N_ineq = sum(n_ineq);
             M_ineq = n_obs*m_ineq;
             
+            dt = self.opt_params.dt;
             n_x = self.opt_params.n_x;
             n_u = self.opt_params.n_u;
             
-            z_u = self.opt_params.z_u;
-            z_l = self.opt_params.z_l;
-            u_u = self.opt_params.u_u;
-            u_l = self.opt_params.u_l;
+            d_min = self.opt_params.d_min;
+            
+            du_u = self.opt_params.du_u;
+            du_l = self.opt_params.du_l;
             
             Q = self.opt_params.Q;
             R = self.opt_params.R;
@@ -124,8 +125,8 @@ classdef obca_controller_FP_parameterized
             
             x0 = [];
             params = [];
-            ub = [];
-            lb = [];
+            hu = [];
+            hl = [];
             for k = 1:self.opt_params.N+1
                 obs_A = [];
                 obs_b = [];
@@ -134,36 +135,21 @@ classdef obca_controller_FP_parameterized
                     obs_b = [obs_b; reshape(obs{i,k}.b, [], 1)];
                 end
                 
-%                 params = [params; z_ref(:,k); obs_A; obs_b];
-%                 if k == self.opt_params.N+1
-%                     x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,self.opt_params.N); self.mu_ws(:,self.opt_params.N)];
-%                 else
-%                     x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k)];
-%                 end
-                
                 if k == self.opt_params.N+1
-                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,end); self.mu_ws(:,end)];
-                    ub = [ub; z_u; self.dual_u];
-                    lb = [lb; z_l; self.dual_l];
-                    params = [params; z_ref(:,k); obs_A; obs_b; Q'];
+                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,end); self.mu_ws(:,end)]; 
+                    params = [params; z_ref(:,k); obs_A; obs_b; Q'; d_min];
                 elseif k == 1
                     x0 = [x0; z_s; self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); u_prev];
-                    ub = [ub; self.dual_u; u_u];
-                    lb = [lb; self.dual_l; u_l];
-                    params = [params; z_ref(:,k); obs_A; obs_b; Q'; R'; R_d'];
+                    params = [params; z_ref(:,k); obs_A; obs_b; Q'; R'; R_d'; d_min];
                 else
                     x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k-1)];
-                    ub = [ub; z_u; self.dual_u; u_u; u_u];
-                    lb = [lb; z_l; self.dual_l; u_l; u_l];
-                    params = [params; z_ref(:,k); obs_A; obs_b; Q'; R'; R_d'];
+                    params = [params; z_ref(:,k); obs_A; obs_b; Q'; R'; R_d'; d_min];
                 end
             end
             
             problem.x0 = x0;
             problem.all_parameters = params;
             problem.xinit = [z_s; u_prev];
-            problem.ub = ub;
-            problem.lb = lb;
             
             % Solve
             if exist(strcat(self.opt_params.name, '.m'), 'file')
