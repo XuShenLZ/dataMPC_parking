@@ -25,7 +25,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     load(exp_file)
 
     %% Construct strategy prediction model
-    model_name = 'nn_strategy_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17453_2020-08-04_15-42';
+    model_name = 'nn_strategy_barc_TF-trainscg_h-40_AC-tansig_ep2000_CE0.17672_2020-10-17_21-13';
     model_file = strcat('../../models/', model_name, '.mat');
 
     V = 0.01 * eye(3);
@@ -85,6 +85,10 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
     
     EV_G = [1, 0; -1, 0; 0, 1; 0, -1];
     EV_g = [EV_L/2; EV_L/2; EV_W/2; EV_W/2];
+
+    EV.G = EV_G;
+    EV.g = EV_g;
+    EV.V = [EV_L/2, -EV_W/2; EV_L/2, EV_W/2; -EV_L/2, EV_W/2; -EV_L/2, -EV_W/2];
     
     EV.traj = [EV.traj(1,:)*scaling_factor; EV.traj(2,:)*scaling_factor; EV.traj(3,:); EV.traj(4,:)*scaling_factor];
     
@@ -161,7 +165,7 @@ function [col, T_final] = FSM_HOBCA_strat_fp_inflated(exp_num, data_gen)
         mkdir('forces_pro_gen_strat')
     end
     cd forces_pro_gen_strat
-    obca_controller = hpp_obca_controller_FP(true, ws_params, opt_params);
+    obca_controller = hpp_obca_controller_FP(false, ws_params, opt_params);
     cd ..
     addpath('forces_pro_gen_strat')
 
