@@ -4,7 +4,7 @@ clear all
 %%
 % Plot and save movie
 
-name = 'FSM_HOBCA_strat_fp_Exp4_Col0_2020-10-21_01-04';
+name = 'FSM_HOBCA_strat_fp_Exp4_Col0_2020-10-21_16-17';
 fname = sprintf('../data/%s.mat', name);
 
 % name = 'tmp';
