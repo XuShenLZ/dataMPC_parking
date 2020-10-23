@@ -110,14 +110,10 @@ classdef obca_controller_FP_parameterized
             N_ineq = sum(n_ineq);
             M_ineq = n_obs*m_ineq;
             
-            dt = self.opt_params.dt;
             n_x = self.opt_params.n_x;
             n_u = self.opt_params.n_u;
             
             d_min = self.opt_params.d_min;
-            
-            du_u = self.opt_params.du_u;
-            du_l = self.opt_params.du_l;
             
             Q = self.opt_params.Q;
             R = self.opt_params.R;
@@ -125,8 +121,6 @@ classdef obca_controller_FP_parameterized
             
             x0 = [];
             params = [];
-            hu = [];
-            hl = [];
             for k = 1:self.opt_params.N+1
                 obs_A = [];
                 obs_b = [];

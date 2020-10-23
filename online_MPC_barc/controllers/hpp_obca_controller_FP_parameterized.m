@@ -102,6 +102,12 @@ classdef hpp_obca_controller_FP_parameterized
             n_x = self.opt_params.n_x;
             n_u = self.opt_params.n_u;
             
+            d_min = self.opt_params.d_min;
+            
+            Q = self.opt_params.Q;
+            R = self.opt_params.R;
+            R_d = self.opt_params.R_d;
+            
             x0 = [];
             params = [];
             for k = 1:self.opt_params.N+1
@@ -115,12 +121,15 @@ classdef hpp_obca_controller_FP_parameterized
                 hyp_w = hyp{k}.w;
                 hyp_b = hyp{k}.b;
                 
-                params = [params; z_ref(:,k); obs_A; obs_b; hyp_w; hyp_b];
-                    
                 if k == self.opt_params.N+1
-                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,self.opt_params.N); self.mu_ws(:,self.opt_params.N)];
+                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,end); self.mu_ws(:,end)]; 
+                    params = [params; z_ref(:,k); obs_A; obs_b; hyp_w; hyp_b; Q'; d_min];
+                elseif k == 1
+                    x0 = [x0; z_s; self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); u_prev];
+                    params = [params; z_ref(:,k); obs_A; obs_b; hyp_w; hyp_b; Q'; R'; R_d'; d_min];
                 else
-                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k)];
+                    x0 = [x0; self.z_ws(:,k); self.lambda_ws(:,k); self.mu_ws(:,k); self.u_ws(:,k); self.u_ws(:,k-1)];
+                    params = [params; z_ref(:,k); obs_A; obs_b; hyp_w; hyp_b; Q'; R'; R_d'; d_min];
                 end
             end
             
