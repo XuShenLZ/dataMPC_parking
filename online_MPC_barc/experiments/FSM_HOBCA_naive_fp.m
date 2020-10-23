@@ -1,7 +1,7 @@
 %% FSM_HOBCA_naive_fp: naive HOBCA
 % exp_num (int, 1-486): The exp_num going to be evaluated
 % data_gen (boolean): whether this is doing datagen or not
-function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
+function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen, fp_regen)
 
     tExp = tic;
 
@@ -29,7 +29,7 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
     
     N = 20; % Prediction horizon
     dt = EV.dt; % Time step
-    T = 1500; % Max time
+    T = 750; % Max time
     T_tv = length(TV.t); % Length of TV data
     
     EV_L = 0.5334;
@@ -37,17 +37,24 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
     
     TV_L = 0.5334;
     TV_W = 0.2794;
+
+    L_r = 0.1619;
+    L_f = 0.1619;
     
     TV.length = TV_L;
     TV.width = TV_W;
     
-    scaling_factor = EV_L/EV.length;
+    scaling_factor = (L_f + L_r)/EV.L;
+
+    EV.L = L_f + L_r;
     
     EV.length = EV_L;
     EV.width = EV_W;
+    EV.ref_v = 0.3;
     
     x_max = 30*scaling_factor; % The right most x coordinate
-    v_ref = EV.ref_v*scaling_factor; % Reference velocity
+    % v_ref = EV.ref_v*scaling_factor; % Reference velocity
+    v_ref = EV.ref_v;
     y_ref = EV.ref_y*scaling_factor; % Reference y
     r = sqrt(EV_W^2 + EV_L^2)/2; % Collision buffer radius
     
@@ -65,6 +72,10 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
     
     EV_G = [1, 0; -1, 0; 0, 1; 0, -1];
     EV_g = [EV_L/2; EV_L/2; EV_W/2; EV_W/2];
+
+    EV.G = EV_G;
+    EV.g = EV_g;
+    EV.V = [EV_L/2, -EV_W/2; EV_L/2, EV_W/2; -EV_L/2, EV_W/2; -EV_L/2, -EV_W/2];
     
     EV.traj = [EV.traj(1,:)*scaling_factor; EV.traj(2,:)*scaling_factor; EV.traj(3,:); EV.traj(4,:)*scaling_factor];
     
@@ -73,19 +84,17 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
 
     % Instantiate ego vehicle car dynamics
     M = 10; % RK4 steps
-    L_r = 0.1619;
-    L_f = 0.1619;
     EV_dynamics = bike_dynamics_rk4(L_r, L_f, dt, M);
 
     % Instantiate obca controller
     Q = [10 1 1 5];
     R = [1 1];
-    R_d = [0.01, 0.01];
+    R_d = [0.1, 0.1];
     
     z_u = [10; 10; 10; 1];
     z_l = [-10; -10; -10; -1];
-    u_u = [0.35; 1];
-    u_l = [-0.35; -1];
+    u_u = [0.45; 1];
+    u_l = [-0.45; -1];
     du_u = [0.6; 5];
     du_l = [-0.6; -8];
     
@@ -143,7 +152,7 @@ function [col, T_final] = FSM_HOBCA_naive_fp(exp_num, data_gen)
         mkdir('forces_pro_gen_naive')
     end
     cd forces_pro_gen_naive
-    obca_controller = obca_controller_FP(true, ws_params, opt_params);
+    obca_controller = obca_controller_FP(fp_regen, ws_params, opt_params);
     cd ..
     addpath('forces_pro_gen_naive')
 
