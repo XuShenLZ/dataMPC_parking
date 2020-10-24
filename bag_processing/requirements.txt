@@ -1,0 +1,7 @@
+pyyaml
+pycryptodomex
+gnupg
+rospkg
+numpy
+matplotlib
+jupyterlab
