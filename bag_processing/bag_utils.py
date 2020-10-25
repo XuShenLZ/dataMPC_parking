@@ -1,6 +1,4 @@
 import rosbag
-import numpy as np
-import matplotlib.pyplot as plt
 
 class Vehicle(object):
     """
@@ -80,7 +78,7 @@ def extract_traj(bag):
         FSM["state"].append(msg.fsm_state)
 
     for _, msg, _ in b.read_messages('/ego_vehicle/strategy_scores'):
-        FSM["state"].append(msg.scores)
+        FSM["score"].append(msg.scores)
 
     # Current States
     for _, msg, t in b.read_messages('/ego_vehicle/est_states'):
