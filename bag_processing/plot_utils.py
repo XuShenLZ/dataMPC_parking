@@ -51,7 +51,7 @@ def plot_map_3d(fig_name, height=10, num_spots=19, occupancy=np.ones((2, 19)), s
             dimension = [v_width, v_length, height]
             plot_cube(ax, center, dimension)
 
-    ax.axes.set_xlim3d(left=0.5, right=6.5)
+    ax.axes.set_xlim3d(left=-0.5, right=6.5)
     ax.axes.set_ylim3d(bottom=-1.5, top=1.5)
     ax.axes.set_zlim3d(bottom=0, top=height)
     

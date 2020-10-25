@@ -5,3 +5,4 @@ rospkg
 numpy
 matplotlib
 jupyterlab
+PyQt5
