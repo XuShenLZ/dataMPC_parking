@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib import transforms
 
 def plot_map_2d(fig_name, num_spots=19, occupancy=np.ones((2, 19)), spot_width=0.32, spot_length=0.55, lane_width=0.5, v_length=0.5, v_width=0.2):
     """
@@ -31,6 +32,29 @@ def plot_map_2d(fig_name, num_spots=19, occupancy=np.ones((2, 19)), spot_width=0
                                       0.5*spot_length-0.5*v_length), v_width, v_length, facecolor="#d5d7db")
             ax.add_patch(rect)
 
+
+def plot_car_frames(ax, pos_list, car_img, plot_shape=[0.265, 0.52]):
+    """
+    plot car images along a list of positions with discreasing transparency
+    """
+    img_shape = car_img.shape[:2]
+    num_list = len(pos_list)
+    for idx, pos in enumerate(pos_list):
+        car = car_img.copy()
+
+        # Center the vehicle to (0, 0), scale it, and turn it to heading angle 0
+        tf = transforms.Affine2D().translate(
+            tx=-img_shape[1]/2, ty=-img_shape[0]/2).scale(sx=plot_shape[0]/img_shape[1], sy=plot_shape[1]/img_shape[0]).rotate_around(x=0, y=0, theta=np.pi/2)
+
+        # # Rotate it with the heading angle
+        tf = tf.rotate_around(x=0, y=0, theta=pos[2])
+
+        # # Translate it to the target position
+        tf = tf.translate(tx=pos[0], ty=pos[1])
+
+        im = ax.imshow(car, origin='lower', alpha=(idx+1)/num_list)
+        im.set_transform(tf + ax.transData)
+        
 
 def plot_map_3d(fig_name, height=10, num_spots=19, occupancy=np.ones((2, 19)), spot_width=0.32, spot_length=0.55, lane_width=0.5, v_length=0.5, v_width=0.2):
     """
