@@ -31,7 +31,7 @@ class Vehicle(object):
         if self.state_t0 == None:
             self.state_t0 = t
         
-        self.state_t.append(t - self.state_t0)
+        self.state_t.append(t)
 
         self.x.append(msg.x)
         self.y.append(msg.y)
@@ -45,7 +45,7 @@ class Vehicle(object):
         if self.input_t0 == None:
             self.input_t0 = t
         
-        self.input_t.append(t - self.input_t0)
+        self.input_t.append(t)
 
         self.delta.append(msg.servo)
         self.a.append(msg.motor)
@@ -71,33 +71,37 @@ class Vehicle(object):
         """
         # For State
         start_time_diff = np.abs(np.array(self.state_t) - start_time)
-        start_idx = np.argmin(start_time_diff)
+        state_start_idx = np.argmin(start_time_diff)
 
         end_time_diff = np.abs(np.array(self.state_t) - end_time)
-        end_idx = np.argmin(end_time_diff)
+        state_end_idx = np.argmin(end_time_diff)
 
-        self.state_t0 = self.state_t[start_idx]
-        self.state_t = [
-            x-self.state_t0 for x in self.state_t[start_idx: end_idx]]
+        # self.state_t0 = self.state_t[state_start_idx]
+        # self.state_t = [
+        #     x-self.state_t0 for x in self.state_t[state_start_idx: state_end_idx]]
+        self.state_t = self.state_t[state_start_idx: state_end_idx]
+        self.state_t0 = self.state_t[0]
 
-        self.x = self.x[start_idx: end_idx]
-        self.y = self.y[start_idx: end_idx]
-        self.heading = self.heading[start_idx: end_idx]
-        self.v = self.v[start_idx: end_idx]
+        self.x = self.x[state_start_idx: state_end_idx]
+        self.y = self.y[state_start_idx: state_end_idx]
+        self.heading = self.heading[state_start_idx: state_end_idx]
+        self.v = self.v[state_start_idx: state_end_idx]
 
         # For input
         start_time_diff = np.abs(np.array(self.input_t) - start_time)
-        start_idx = np.argmin(start_time_diff)
+        input_start_idx = np.argmin(start_time_diff)
 
         end_time_diff = np.abs(np.array(self.input_t) - end_time)
-        end_idx = np.argmin(end_time_diff)
+        input_end_idx = np.argmin(end_time_diff)
 
-        self.input_t0 = self.input_t[start_idx]
-        self.input_t = [
-            x-self.input_t0 for x in self.input_t[start_idx: end_idx]]
+        # self.input_t0 = self.input_t[input_start_idx]
+        # self.input_t = [
+        #     x-self.input_t0 for x in self.input_t[input_start_idx: input_end_idx]]
+        self.input_t = self.input_t[input_start_idx: input_end_idx]
+        self.input_t0 = self.input_t[0]
 
-        self.delta = self.delta[start_idx: end_idx]
-        self.a = self.a[start_idx: end_idx]
+        self.delta = self.delta[input_start_idx: input_end_idx]
+        self.a = self.a[input_start_idx: input_end_idx]
 
 class FiniteStateMachine(object):
     """
@@ -112,10 +116,7 @@ class FiniteStateMachine(object):
 
         self.states = []
         self.state_idxs = []
-        self.state_names = ["Free-Driving", "Safe-Confidence",
-                            "Safe-Yield", "Safe-Infeasible",
-                            "HOBCA-Unlocked", "HOBCA-Locked",
-                            "Emergency-Break"]
+        self.state_names = ["*-OBCA", "Safety", "EB"]
 
         self.score_l = []
         self.score_r = []
@@ -128,7 +129,7 @@ class FiniteStateMachine(object):
         if self.t0 == None:
             self.t0 = t
         
-        self.t.append(t - self.t0)
+        self.t.append(t)
 
     def append_state(self, state):
         """
@@ -136,7 +137,14 @@ class FiniteStateMachine(object):
         """
         self.states.append(state)
 
-        idx = self.state_names.index(state)
+        if state in ["Free-Driving", "HOBCA-Unlocked", "HOBCA-Locked"]:
+            idx = 0
+        elif state in ["Safe-Confidence", "Safe-Yield", "Safe-Infeasible"]:
+            idx = 1
+        elif state == "Emergency-Break":
+            idx = 2
+        else:
+            raise ValueError("State not recognized.")
 
         self.state_idxs.append(idx)
 
@@ -157,8 +165,10 @@ class FiniteStateMachine(object):
         end_time_diff = np.abs(np.array(self.t) - end_time)
         end_idx = np.argmin(end_time_diff)
 
-        self.t0 = self.t[start_idx]
-        self.t = [x-self.t0 for x in self.t[start_idx: end_idx]]
+        # self.t0 = self.t[start_idx]
+        # self.t = [x-self.t0 for x in self.t[start_idx: end_idx]]
+        self.t = self.t[start_idx:end_idx]
+        self.t0 = self.t[0]
 
         self.states = self.states[start_idx:end_idx]
         self.state_idxs = self.state_idxs[start_idx:end_idx]
@@ -209,11 +219,11 @@ def extract_traj(bag):
         TV.append_input(msg, t.to_sec())
 
     # Predicted States
-    for _, msg, _ in b.read_messages('/ego_vehicle/pred_states'):
-        EV.append_pred_state_input(msg)
+    # for _, msg, _ in b.read_messages('/ego_vehicle/pred_states'):
+    #     EV.append_pred_state_input(msg)
     
-    for _, msg, _ in b.read_messages('/traget_vehicle/pred_states'):
-        TV.append_pred_state_input(msg)
+    # for _, msg, _ in b.read_messages('/traget_vehicle/pred_states'):
+    #     TV.append_pred_state_input(msg)
     
     print("Trajectory Extraction Finished")
 
@@ -251,6 +261,8 @@ def cut_static_traj(FSM, EV, TV, threshold=1e-1):
 
     EV_end_time = EV.state_t[EV_end_idx]
 
+    print("EV start time: %f, end time: %f" % (EV_start_time, EV_end_time) )
+
     EV.slicing_data(EV_start_time, EV_end_time)
     FSM.slicing_data(EV_start_time, EV_end_time)
 
@@ -265,6 +277,8 @@ def cut_static_traj(FSM, EV, TV, threshold=1e-1):
         TV_end_idx -= 1
 
     TV_end_time = TV.state_t[TV_end_idx]
+
+    print("TV start time: %f, end time: %f" % (TV_start_time, TV_end_time))
 
     TV.slicing_data(TV_start_time, TV_end_time)
 

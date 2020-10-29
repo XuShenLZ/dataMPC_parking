@@ -3,33 +3,32 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib import transforms
 
-def plot_map_2d(fig_name, num_spots=19, occupancy=np.ones((2, 19)), spot_width=0.32, spot_length=0.55, lane_width=0.5, v_length=0.5, v_width=0.2):
+def plot_map_2d(ax, num_spots=19, occupancy=np.ones((2, 19)), spot_width=0.32, spot_length=0.55, lane_width=0.5, v_length=0.5, v_width=0.2):
     """
     plot parking lot map in 2D
     """
-    plt.figure(fig_name)
-    ax = plt.gca()
     
     # Plot parking lanes
-    plt.plot([0, num_spots*spot_width], [-lane_width-spot_length, -
-                          lane_width-spot_length], 'k')
-    plt.plot([0, num_spots*spot_width], [lane_width+spot_length, lane_width +
-                          spot_length], 'k')
+    ax.plot([0, num_spots*spot_width], [-lane_width-spot_length, -
+                          lane_width-spot_length], 'k', zorder=1)
+    ax.plot([0, num_spots*spot_width], [lane_width+spot_length, lane_width +
+                                        spot_length], 'k', zorder=1)
     for i in range(num_spots+1):
-        plt.plot([i*spot_width, i*spot_width], [lane_width, lane_width+spot_length], 'k')
-        plt.plot([i*spot_width, i*spot_width],
-                 [-lane_width, -lane_width-spot_length], 'k')
+        ax.plot([i*spot_width, i*spot_width],
+                [lane_width, lane_width+spot_length], 'k', zorder=1)
+        ax.plot([i*spot_width, i*spot_width],
+                [-lane_width, -lane_width-spot_length], 'k', zorder=1)
     
     # Plot static vehicles
     for i in range(occupancy.shape[1]):
         if occupancy[0, i]:
             rect = patches.Rectangle(((i+0.5)*spot_width-0.5*v_width, lane_width +
-                                      0.5*spot_length-0.5*v_length), v_width, v_length, facecolor="#d5d7db")
+                                      0.5*spot_length-0.5*v_length), v_width, v_length, facecolor="#d5d7db", zorder=2)
             ax.add_patch(rect)
         
         if occupancy[1, i]:
             rect = patches.Rectangle(((i+0.5)*spot_width-0.5*v_width, -lane_width -
-                                      0.5*spot_length-0.5*v_length), v_width, v_length, facecolor="#d5d7db")
+                                      0.5*spot_length-0.5*v_length), v_width, v_length, facecolor="#d5d7db", zorder=2)
             ax.add_patch(rect)
 
 
@@ -52,7 +51,7 @@ def plot_car_frames(ax, pos_list, car_img, plot_shape=[0.265, 0.52]):
         # # Translate it to the target position
         tf = tf.translate(tx=pos[0], ty=pos[1])
 
-        im = ax.imshow(car, origin='lower', alpha=(idx+1)/num_list)
+        im = ax.imshow(car, origin='lower', alpha=(idx+1)/num_list, zorder=10)
         im.set_transform(tf + ax.transData)
         
 
