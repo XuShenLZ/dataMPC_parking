@@ -2,14 +2,15 @@
 
 import rosbag
 import numpy as np
-import cv2 as cv
-from cv_bridge import CvBridge, CvBridgeError
+import cv2 as cv # Use 'python3 -m pip install opencv-python'
+from cv_bridge import CvBridge, CvBridgeError # From the ros-noetic-cv-bridge package. Use 'sudo apt install ros-noetic-cv-bridge'
 import warnings
-import yaml, os
+import yaml # Use 'python3 -m pip install pyyaml'
+import os 
 
 # In order for this import statement to work we need to build the python package
 # 1. Navigate to mpclab_strategy_obca/src/mpclab_strategy_obca
-# 2. run 'python -m pip install .'
+# 2. run 'python3 -m pip install -e .'
 from mpclab_strategy_obca.constraint_generation.hyperplaneConstraintGenerator import hyperplaneConstraintGenerator
 from mpclab_strategy_obca.utils.types import experimentParams
 
