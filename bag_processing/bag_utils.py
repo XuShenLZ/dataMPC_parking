@@ -1,5 +1,8 @@
 import rosbag
 import numpy as np
+import cv2 as cv
+from cv_bridge import CvBridge, CvBridgeError
+import warnings
 
 class Vehicle(object):
     """
@@ -177,6 +180,50 @@ class FiniteStateMachine(object):
         self.score_r = self.score_r[start_idx:end_idx]
         self.score_y = self.score_y[start_idx:end_idx]
 
+class VideoReader(object):
+    def __init__(self, filename, image_topic='/overhead_camera/image_rect_color'):
+        bridge = CvBridge()
+        
+        self.image_ts = []
+        self.images = []
+        with rosbag.Bag(filename, 'r') as bag:
+            for topic, msg, t in bag.read_messages():
+                if topic == image_topic:
+                    try: 
+                        cv_image = bridge.imgmsg_to_cv2(msg, 'rgb8')
+                    except CvBridgeError, e:
+                        print(e)
+                    self.image_ts.append(t.to_sec())
+                    self.images.append(cv_image)
+        
+        self.image_ts = np.array(self.image_ts)
+        self.video_start = np.amin(self.image_ts)
+        self.video_end = np.amax(self.image_ts)
+        self.video_length = self.video_end - self.video_start
+        self.n_frames = len(self.image_ts)
+        
+        print('Video of duration %g s read in as %i frames' % (self.video_length, self.n_frames))
+    
+    def get_frame(self, time=None, frame=None):
+        if time is None and frame is None:
+            raise(RuntimeError('Need to specify a time between up to %g s or a frame number between up to %i' % (self.video_length, self.n_frames-1)))
+        if time is not None and frame is not None:
+            raise(RuntimeError('Can only specify either time or frame'))
+            
+        if time is not None:
+            assert time >= 0, 'Time must be non-negative'
+            if time > self.video_length:
+                warnings.warn('Desired time of %g s is greater than video length of %g s, returning last frame' % (time, self.video_length))
+                time = self.video_length
+            frame = np.argmin(np.abs(self.image_ts - (time+self.video_start)))
+        elif frame is not None:
+            assert frame >= 0, 'Frame number must non-negative'
+            if frame >= self.n_frames:
+                warnings.warn('Desired frame number of %i is greater than %i, returning last frame' % (frame, self.n_frames))
+                frame = self.n_frames[-1]
+        
+        return self.images[frame], self.image_ts[frame], frame
+        
 def extract_traj(bag):
     """
     Extract traj and FSM from the bag
