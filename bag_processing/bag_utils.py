@@ -1,8 +1,16 @@
+#!/usr/bin python3
+
 import rosbag
 import numpy as np
 import cv2 as cv
 from cv_bridge import CvBridge, CvBridgeError
 import warnings
+import yaml, os
+
+# In order for this import statement to work we need to build the python package
+# 1. Navigate to mpclab_strategy_obca/src/mpclab_strategy_obca
+# 2. run 'python -m pip install .'
+from mpclab_strategy_obca.constraint_generation.hyperplaneConstraintGenerator import hyperplaneConstraintGenerator
 
 class Vehicle(object):
     """
@@ -180,34 +188,88 @@ class FiniteStateMachine(object):
         self.score_r = self.score_r[start_idx:end_idx]
         self.score_y = self.score_y[start_idx:end_idx]
 
-class VideoReader(object):
-    def __init__(self, filename, image_topic='/overhead_camera/image_rect_color'):
+# Object which reads the rosbag. Use method get_frame to grab a frame of the video and the data up to that point in time
+class VideoDataReader(object):
+    def __init__(self, filename, params_dir):
         bridge = CvBridge()
         
-        self.image_ts = []
-        self.images = []
+        image_topic='/overhead_camera/image_rect_color'
+        fsm_topic = '/ego_vehicle/fsm_state'
+        score_topic = '/ego_vehicle/strategy_scores'
+        ev_state_topic = '/ego_vehicle/est_states'
+        ev_input_topic = '/ego_vehicle/ecu'
+        tv_state_topic = '/target_vehicle/est_states'
+        tv_input_topic = '/target_vehicle/ecu'
+        
+        ev_control_params_file = os.path.join(params_dir, 'params', 'ego_vehicle', 'controller.yaml')
+        with open(ev_control_params_file, 'r') as f:
+            self.ev_control_params = yaml.safe_load(f)
+        ev_vehicle_params_file = os.path.join(params_dir, 'params', 'ego_vehicle', 'vehicle.yaml')
+        with open(ev_vehicle_params_file, 'r') as f:
+            self.ev_vehicle_params = yaml.safe_load(f)
+        tv_control_params_file = os.path.join(params_dir, 'params', 'target_vehicle', 'controller.yaml')
+        with open(tv_control_params_file, 'r') as f:
+            self.tv_control_params = yaml.safe_load(f)
+        tv_vehicle_params_file = os.path.join(params_dir, 'params', 'target_vehicle', 'vehicle.yaml')
+        with open(tv_vehicle_params_file, 'r') as f:
+            self.tv_vehicle_params = yaml.safe_load(f)
+        
+        self.image_t = []
+        self.image = []
+        self.fsm_t = []
+        self.fsm = []
+        self.score_t = []
+        self.score = []
+        self.ev_state_t = []
+        self.ev_state = []
+        self.ev_input_t = []
+        self.ev_input = []
+        self.tv_state_t = []
+        self.tv_state = []
+        self.tv_input_t = []
+        self.tv_input = []
+        
         with rosbag.Bag(filename, 'r') as bag:
             for topic, msg, t in bag.read_messages():
                 if topic == image_topic:
-                    try: 
-                        cv_image = bridge.imgmsg_to_cv2(msg, 'rgb8')
-                    except CvBridgeError, e:
-                        print(e)
-                    self.image_ts.append(t.to_sec())
-                    self.images.append(cv_image)
+                    cv_image = bridge.imgmsg_to_cv2(msg, 'rgb8')
+                    self.image_t.append(t.to_sec())
+                    self.image.append(cv_image)
+                elif topic == fsm_topic:
+                    self.fsm_t.append(t.to_sec())
+                    self.fsm.append(msg.fsm_state)
+                elif topic == score_topic:
+                    self.score_t.append(t.to_sec())
+                    self.score.append(msg.scores)
+                elif topic == ev_state_topic:
+                    z = np.array([msg.x, msg.y, msg.psi, msg.v])
+                    self.ev_state_t.append(t.to_sec())
+                    self.ev_state.append(z)
+                elif topic == ev_input_topic:
+                    u = np.array([msg.servo, msg.motor])
+                    self.ev_input_t.append(t.to_sec())
+                    self.ev_input.append(u)
+                elif topic == tv_state_topic:
+                    z = np.array([msg.x, msg.y, msg.psi, msg.v])
+                    self.tv_state_t.append(t.to_sec())
+                    self.tv_state.append(z)
+                elif topic == tv_input_topic:
+                    u = np.array([msg.servo, msg.motor])
+                    self.tv_input_t.append(t.to_sec())
+                    self.tv_input.append(u)
         
-        self.image_ts = np.array(self.image_ts)
-        self.video_start = np.amin(self.image_ts)
-        self.video_end = np.amax(self.image_ts)
+        self.image_t = np.array(self.image_t)
+        self.video_start = np.amin(self.image_t)
+        self.video_end = np.amax(self.image_t)
         self.video_length = self.video_end - self.video_start
-        self.n_frames = len(self.image_ts)
+        self.n_frames = len(self.image_t)
         
         print('Video of duration %g s read in as %i frames' % (self.video_length, self.n_frames))
     
-    def get_frame(self, time=None, frame=None):
-        if time is None and frame is None:
+    def get_frame(self, time=None, frame_idx=None):
+        if time is None and frame_idx is None:
             raise(RuntimeError('Need to specify a time between up to %g s or a frame number between up to %i' % (self.video_length, self.n_frames-1)))
-        if time is not None and frame is not None:
+        if time is not None and frame_idx is not None:
             raise(RuntimeError('Can only specify either time or frame'))
             
         if time is not None:
@@ -215,14 +277,31 @@ class VideoReader(object):
             if time > self.video_length:
                 warnings.warn('Desired time of %g s is greater than video length of %g s, returning last frame' % (time, self.video_length))
                 time = self.video_length
-            frame = np.argmin(np.abs(self.image_ts - (time+self.video_start)))
-        elif frame is not None:
-            assert frame >= 0, 'Frame number must non-negative'
-            if frame >= self.n_frames:
-                warnings.warn('Desired frame number of %i is greater than %i, returning last frame' % (frame, self.n_frames))
-                frame = self.n_frames[-1]
+            frame_idx = np.argmin(np.abs(self.image_t - (time+self.video_start)))
+        elif frame_idx is not None:
+            assert frame_idx >= 0, 'Frame number must non-negative'
+            if frame_idx >= self.n_frames:
+                warnings.warn('Desired frame number of %i is greater than %i, returning last frame' % (frame_idx, self.n_frames))
+                frame_idx = self.n_frames[-1]
+            time = self.image_t[frame_idx]
         
-        return self.images[frame], self.image_ts[frame], frame
+        data = dict()
+        t_idx = np.argmin(np.abs(self.fsm_t - (time+self.video_start)))+1
+        data['fsm'] = np.array(self.fsm[:t_idx])
+        t_idx = np.argmin(np.abs(self.score_t - (time+self.video_start)))+1
+        data['score'] = np.array(self.score[:t_idx])
+        t_idx = np.argmin(np.abs(self.ev_state_t - (time+self.video_start)))+1
+        data['ev_state'] = np.array(self.ev_state[:t_idx])
+        t_idx = np.argmin(np.abs(self.ev_input_t - (time+self.video_start)))+1
+        data['ev_input'] = np.array(self.ev_input[:t_idx])
+        t_idx = np.argmin(np.abs(self.tv_state_t - (time+self.video_start)))+1
+        data['tv_state'] = np.array(self.tv_state[:t_idx])
+        t_idx = np.argmin(np.abs(self.tv_input_t - (time+self.video_start)))+1
+        data['tv_input'] = np.array(self.tv_input[:t_idx])
+        
+        ev_z = data['ev_state'][-1]
+        tv_z = data['tv_state'][-1]
+        return self.image[frame_idx], self.image_t[frame_idx], frame_idx, data
         
 def extract_traj(bag):
     """
