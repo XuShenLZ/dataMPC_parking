@@ -220,12 +220,12 @@ class VideoDataReader(object):
         self.dt = self.ev_control_params['controller']['dt']
         self.N = self.ev_control_params['controller']['obca']['N']
         self.v_ref = self.ev_control_params['controller']['obca']['v_ref']
-        EV_L = self.ev_vehicle_params['car']['plot']['L']
-        EV_W = self.ev_vehicle_params['car']['plot']['W']
-        TV_L = self.tv_vehicle_params['car']['plot']['L']
-        TV_W = self.tv_vehicle_params['car']['plot']['W']
-        coll_buf_r = np.sqrt(EV_L**2+EV_W**2)/2
-        params = experimentParams(car_L=TV_L, car_W=TV_W, collision_buffer_r=coll_buf_r)
+        self.EV_L = self.ev_vehicle_params['car']['plot']['L']
+        self.EV_W = self.ev_vehicle_params['car']['plot']['W']
+        self.TV_L = self.tv_vehicle_params['car']['plot']['L']
+        self.TV_W = self.tv_vehicle_params['car']['plot']['W']
+        coll_buf_r = np.sqrt(self.EV_L**2+self.EV_W**2)/2
+        params = experimentParams(car_L=self.TV_L, car_W=self.TV_W, collision_buffer_r=coll_buf_r)
         self.constraint_generator = hyperplaneConstraintGenerator(params)
         
         self.image_t = []
@@ -308,7 +308,7 @@ class VideoDataReader(object):
             assert frame_idx >= 0, 'Frame number must non-negative'
             if frame_idx >= self.n_frames:
                 warnings.warn('Desired frame number of %i is greater than %i, returning last frame' % (frame_idx, self.n_frames))
-                frame_idx = self.n_frames[-1]
+                frame_idx = self.n_frames
             time = self.image_t[frame_idx] - self.video_start
         
         data = dict()
