@@ -11,6 +11,7 @@ import yaml, os
 # 1. Navigate to mpclab_strategy_obca/src/mpclab_strategy_obca
 # 2. run 'python -m pip install .'
 from mpclab_strategy_obca.constraint_generation.hyperplaneConstraintGenerator import hyperplaneConstraintGenerator
+from mpclab_strategy_obca.utils.types import experimentParams
 
 class Vehicle(object):
     """
@@ -198,8 +199,10 @@ class VideoDataReader(object):
         score_topic = '/ego_vehicle/strategy_scores'
         ev_state_topic = '/ego_vehicle/est_states'
         ev_input_topic = '/ego_vehicle/ecu'
+        ev_pred_topic = '/ego_vehicle/pred_states'
         tv_state_topic = '/target_vehicle/est_states'
         tv_input_topic = '/target_vehicle/ecu'
+        tv_pred_topic = '/target_vehicle/pred_states'
         
         ev_control_params_file = os.path.join(params_dir, 'params', 'ego_vehicle', 'controller.yaml')
         with open(ev_control_params_file, 'r') as f:
@@ -214,6 +217,17 @@ class VideoDataReader(object):
         with open(tv_vehicle_params_file, 'r') as f:
             self.tv_vehicle_params = yaml.safe_load(f)
         
+        self.dt = self.ev_control_params['controller']['dt']
+        self.N = self.ev_control_params['controller']['obca']['N']
+        self.v_ref = self.ev_control_params['controller']['obca']['v_ref']
+        EV_L = self.ev_vehicle_params['car']['plot']['L']
+        EV_W = self.ev_vehicle_params['car']['plot']['W']
+        TV_L = self.tv_vehicle_params['car']['plot']['L']
+        TV_W = self.tv_vehicle_params['car']['plot']['W']
+        coll_buf_r = np.sqrt(EV_L**2+EV_W**2)/2
+        params = experimentParams(car_L=TV_L, car_W=TV_W, collision_buffer_r=coll_buf_r)
+        self.constraint_generator = hyperplaneConstraintGenerator(params)
+        
         self.image_t = []
         self.image = []
         self.fsm_t = []
@@ -224,10 +238,14 @@ class VideoDataReader(object):
         self.ev_state = []
         self.ev_input_t = []
         self.ev_input = []
+        self.ev_pred_t = []
+        self.ev_pred = []
         self.tv_state_t = []
         self.tv_state = []
         self.tv_input_t = []
         self.tv_input = []
+        self.tv_pred_t = []
+        self.tv_pred = []
         
         with rosbag.Bag(filename, 'r') as bag:
             for topic, msg, t in bag.read_messages():
@@ -249,6 +267,10 @@ class VideoDataReader(object):
                     u = np.array([msg.servo, msg.motor])
                     self.ev_input_t.append(t.to_sec())
                     self.ev_input.append(u)
+                elif topic == ev_pred_topic:
+                    pred = np.vstack((msg.x, msg.y, msg.psi, msg.v)).T
+                    self.ev_pred_t.append(t.to_sec())
+                    self.ev_pred.append(pred)
                 elif topic == tv_state_topic:
                     z = np.array([msg.x, msg.y, msg.psi, msg.v])
                     self.tv_state_t.append(t.to_sec())
@@ -257,6 +279,10 @@ class VideoDataReader(object):
                     u = np.array([msg.servo, msg.motor])
                     self.tv_input_t.append(t.to_sec())
                     self.tv_input.append(u)
+                elif topic == tv_pred_topic:
+                    pred = np.vstack((msg.x, msg.y, msg.psi, msg.v)).T
+                    self.tv_pred_t.append(t.to_sec())
+                    self.tv_pred.append(pred)
         
         self.image_t = np.array(self.image_t)
         self.video_start = np.amin(self.image_t)
@@ -283,24 +309,84 @@ class VideoDataReader(object):
             if frame_idx >= self.n_frames:
                 warnings.warn('Desired frame number of %i is greater than %i, returning last frame' % (frame_idx, self.n_frames))
                 frame_idx = self.n_frames[-1]
-            time = self.image_t[frame_idx]
+            time = self.image_t[frame_idx] - self.video_start
         
         data = dict()
+        
         t_idx = np.argmin(np.abs(self.fsm_t - (time+self.video_start)))+1
+        data['fsm_t'] = np.array(self.fsm_t[:t_idx])
         data['fsm'] = np.array(self.fsm[:t_idx])
+        
         t_idx = np.argmin(np.abs(self.score_t - (time+self.video_start)))+1
+        data['score_t'] = np.array(self.score_t[:t_idx])
         data['score'] = np.array(self.score[:t_idx])
+        
         t_idx = np.argmin(np.abs(self.ev_state_t - (time+self.video_start)))+1
+        data['ev_state_t'] = np.array(self.ev_state_t[:t_idx])
         data['ev_state'] = np.array(self.ev_state[:t_idx])
+        
         t_idx = np.argmin(np.abs(self.ev_input_t - (time+self.video_start)))+1
+        data['ev_input_t'] = np.array(self.ev_input_t[:t_idx])
         data['ev_input'] = np.array(self.ev_input[:t_idx])
+        
+        t_idx = np.argmin(np.abs(self.ev_pred_t - (time+self.video_start)))+1
+        data['ev_pred_t'] = np.array(self.ev_pred_t[t_idx])
+        data['ev_pred'] = np.array(self.ev_pred[t_idx])
+        
         t_idx = np.argmin(np.abs(self.tv_state_t - (time+self.video_start)))+1
+        data['tv_state_t'] = np.array(self.tv_state_t[:t_idx])
         data['tv_state'] = np.array(self.tv_state[:t_idx])
+        
         t_idx = np.argmin(np.abs(self.tv_input_t - (time+self.video_start)))+1
+        data['tv_input_t'] = np.array(self.tv_input_t[:t_idx])
         data['tv_input'] = np.array(self.tv_input[:t_idx])
         
-        ev_z = data['ev_state'][-1]
-        tv_z = data['tv_state'][-1]
+        t_idx = np.argmin(np.abs(self.tv_pred_t - (time+self.video_start)))+1
+        data['tv_pred_t'] = np.array(self.tv_pred_t[t_idx])
+        data['tv_pred'] = np.array(self.tv_pred[t_idx])
+        
+        EV_x, EV_y, EV_heading, EV_v = data['ev_state'][-1]
+        TV_x, TV_y, TV_heading, TV_v = data['tv_state'][-1]
+        TV_pred = data['tv_pred']
+        
+        X_ref = EV_x + np.arange(self.N+1)*self.dt*self.v_ref
+        Y_ref = np.zeros(self.N+1)
+        Heading_ref = np.zeros(self.N+1)
+        V_ref = self.v_ref*np.ones(self.N+1)
+        Z_ref = np.vstack((X_ref, Y_ref, Heading_ref, V_ref)).T
+        data['ev_ref'] = Z_ref
+        
+        scale_mult = 1.0
+        scalings = np.maximum(np.ones(self.N+1), scale_mult*np.abs(TV_v)/self.v_ref)
+        crit_region = self.constraint_generator.check_collision_points(Z_ref[:,:2], TV_pred, scalings)
+        hyp = [{'w': np.array([np.sign(Z_ref[i,0]),np.sign(Z_ref[i,1]),0,0]), 'b': 0, 'pos': None} for i in range(self.N+1)]
+        coll_bounds = [[] for i in range(self.N+1)]
+        theta = np.linspace(0, 2*np.pi, 200)
+        for i in range(self.N+1):
+            if crit_region[i]:
+                if np.argmax(data['score'][-1]) == 0:
+                    d = np.array([0,1])
+                elif np.argmax(data['score'][-1]) == 1:
+                    d = np.array([0,-1])
+                else:
+                    d = np.array([EV_x-TV_pred[i,0], EV_y-TV_pred[i,1]])
+                    d = d/la.norm(d)
+
+                hyp_xy, hyp_w, hyp_b, coll_xy = self.constraint_generator.generate_constraint(Z_ref[i], TV_pred[i], d, scalings[i])
+
+                hyp[i] = {'w': np.concatenate((hyp_w, np.zeros(2))), 'b': hyp_b, 'pos': hyp_xy, 'coll_xy': coll_xy}
+                
+                coll_bound = []
+                for t in theta:
+                    d_bound = np.array([np.cos(t),np.sin(t)])
+                    _, _, _, xy = self.constraint_generator.generate_constraint(Z_ref[i], TV_pred[i], d_bound, scalings[i])
+                    coll_bound.append(xy)
+                coll_bounds[i] = np.array(coll_bound)
+                
+        data['hyp'] = hyp
+        data['coll_bound'] = coll_bounds
+        data['crit_region'] = crit_region
+                
         return self.image[frame_idx], self.image_t[frame_idx], frame_idx, data
         
 def extract_traj(bag):
