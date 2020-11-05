@@ -1,5 +1,5 @@
 <launch>
-  <node pkg="rosbag" type="play" name="rosbag" required="true" args="$HOME/dataMPC_parking/bag_processing/bag_data/barc_run_strategy_obca_2020-10-27-21-33-57_exp_10.bag"/>
+  <node pkg="rosbag" type="play" name="rosbag" required="true" args="/home/mpc/dataMPC_parking/bag_processing/bag_data/barc_run_naive_obca_2020-10-27-21-13-32_exp_6.bag"/>
   <node name="extract" pkg="image_view" type="extract_images" respawn="false" required="true" output="screen" cwd="ROS_HOME">
     <remap from="image" to="/overhead_camera/image_rect_color"/>
   </node>

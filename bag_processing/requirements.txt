@@ -3,6 +3,8 @@ pycryptodomex
 gnupg
 rospkg
 numpy
+scipy
 matplotlib
 jupyterlab
 PyQt5
+opencv-python

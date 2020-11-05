@@ -256,7 +256,17 @@ class VideoDataReader(object):
                     self.image.append(cv_image)
                 elif topic == fsm_topic:
                     self.fsm_t.append(t.to_sec())
-                    self.fsm.append(msg.fsm_state)
+
+                    if msg.fsm_state in ["Free-Driving", "HOBCA-Unlocked", "HOBCA-Locked"]:
+                        idx = 0
+                    elif msg.fsm_state in ["Safe-Confidence", "Safe-Yield", "Safe-Infeasible"]:
+                        idx = 1
+                    elif msg.fsm_state == "Emergency-Break":
+                        idx = 2
+                    else:
+                        raise ValueError("State not recognized.")
+
+                    self.fsm.append(idx)
                 elif topic == score_topic:
                     self.score_t.append(t.to_sec())
                     self.score.append(msg.scores)
@@ -314,35 +324,35 @@ class VideoDataReader(object):
         
         data = dict()
         
-        t_idx = np.argmin(np.abs(self.fsm_t - (time+self.video_start)))+1
+        t_idx = np.argmin(np.abs(self.fsm_t - (time+self.video_start)))
         data['fsm_t'] = np.array(self.fsm_t[:t_idx])
         data['fsm'] = np.array(self.fsm[:t_idx])
         
-        t_idx = np.argmin(np.abs(self.score_t - (time+self.video_start)))+1
+        t_idx = np.argmin(np.abs(self.score_t - (time+self.video_start)))
         data['score_t'] = np.array(self.score_t[:t_idx])
         data['score'] = np.array(self.score[:t_idx])
         
-        t_idx = np.argmin(np.abs(self.ev_state_t - (time+self.video_start)))+1
+        t_idx = np.argmin(np.abs(self.ev_state_t - (time+self.video_start)))
         data['ev_state_t'] = np.array(self.ev_state_t[:t_idx])
         data['ev_state'] = np.array(self.ev_state[:t_idx])
         
-        t_idx = np.argmin(np.abs(self.ev_input_t - (time+self.video_start)))+1
+        t_idx = np.argmin(np.abs(self.ev_input_t - (time+self.video_start)))
         data['ev_input_t'] = np.array(self.ev_input_t[:t_idx])
         data['ev_input'] = np.array(self.ev_input[:t_idx])
         
-        t_idx = np.argmin(np.abs(self.ev_pred_t - (time+self.video_start)))+1
+        t_idx = np.argmin(np.abs(self.ev_pred_t - (time+self.video_start)))
         data['ev_pred_t'] = np.array(self.ev_pred_t[t_idx])
         data['ev_pred'] = np.array(self.ev_pred[t_idx])
         
-        t_idx = np.argmin(np.abs(self.tv_state_t - (time+self.video_start)))+1
+        t_idx = np.argmin(np.abs(self.tv_state_t - (time+self.video_start)))
         data['tv_state_t'] = np.array(self.tv_state_t[:t_idx])
         data['tv_state'] = np.array(self.tv_state[:t_idx])
         
-        t_idx = np.argmin(np.abs(self.tv_input_t - (time+self.video_start)))+1
+        t_idx = np.argmin(np.abs(self.tv_input_t - (time+self.video_start)))
         data['tv_input_t'] = np.array(self.tv_input_t[:t_idx])
         data['tv_input'] = np.array(self.tv_input[:t_idx])
         
-        t_idx = np.argmin(np.abs(self.tv_pred_t - (time+self.video_start)))+1
+        t_idx = np.argmin(np.abs(self.tv_pred_t - (time+self.video_start)))
         data['tv_pred_t'] = np.array(self.tv_pred_t[t_idx])
         data['tv_pred'] = np.array(self.tv_pred[t_idx])
         
