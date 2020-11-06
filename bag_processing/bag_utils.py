@@ -2,6 +2,7 @@
 
 import rosbag
 import numpy as np
+import numpy.linalg as la
 import cv2 as cv # Use 'python3 -m pip install opencv-python'
 from cv_bridge import CvBridge, CvBridgeError # From the ros-noetic-cv-bridge package. Use 'sudo apt install ros-noetic-cv-bridge'
 import warnings
@@ -328,9 +329,10 @@ class VideoDataReader(object):
         data['fsm_t'] = np.array(self.fsm_t[:t_idx])
         data['fsm'] = np.array(self.fsm[:t_idx])
         
-        t_idx = np.argmin(np.abs(self.score_t - (time+self.video_start)))
-        data['score_t'] = np.array(self.score_t[:t_idx])
-        data['score'] = np.array(self.score[:t_idx])
+        if self.score_t:
+            t_idx = np.argmin(np.abs(self.score_t - (time+self.video_start)))
+            data['score_t'] = np.array(self.score_t[:t_idx])
+            data['score'] = np.array(self.score[:t_idx])
         
         t_idx = np.argmin(np.abs(self.ev_state_t - (time+self.video_start)))
         data['ev_state_t'] = np.array(self.ev_state_t[:t_idx])
@@ -374,7 +376,7 @@ class VideoDataReader(object):
         coll_bounds = [[] for i in range(self.N+1)]
         theta = np.linspace(0, 2*np.pi, 200)
         for i in range(self.N+1):
-            if crit_region[i]:
+            if self.score_t and crit_region[i]:
                 if np.argmax(data['score'][-1]) == 0:
                     d = np.array([0,1])
                 elif np.argmax(data['score'][-1]) == 1:
