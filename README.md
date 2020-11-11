@@ -8,7 +8,7 @@ Authors:
 - Edward Zhu, edward_zhu@berkeley.edu
 - Yvonne R. Stürz, y.stuerz@berkeley.edu
 
-This repository contains all codes for MATLAB prototyping and simulation. The Python+ROS implementation on BARC car can be found in [another repo](https://github.com/MPC-Berkeley/mpclab_strategy_obca).
+This repository contains all codes for MATLAB prototyping and simulation. The Python+ROS implementation on BARC car can be found in [`mpclab_strategy_obca`](https://github.com/MPC-Berkeley/mpclab_strategy_obca).
 
 ## Dependencies
 ### MATLAB:
