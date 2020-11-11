@@ -1,8 +1,11 @@
 # dataMPC_parking
-Data driven MPC in parking lot
+Collision Avoidance in Tightly-Constrained Environments without Coordination: a Hierarchical Control Approach
+
+[Webpage](http://bit.ly/data-sg-control), [arXiv](https://arxiv.org/abs/2011.00413)
 
 Xu Shen, xu_shen@berkeley.edu
 Edward Zhu, edward_zhu@berkeley.edu
+Yvonne R. Stürz, y.stuerz@berkeley.edu
 
 ## Dependencies
 ### MATLAB:
@@ -10,7 +13,41 @@ Edward Zhu, edward_zhu@berkeley.edu
 2. Parallel Computing Toolbox (Only for generating dataset)
 3. Deep Learning Toolbox (For network training and predicting)
 4. CasADi (For controller formulation)
-5. Forces Pro (For fast implementation)
+5. Forces Pro (For real-time implementation)
+
+### Python:
+1. ROS Noetic
+2. Packages for pip-installation are listed in `requirement.txt`
+
+## File Structure:
+1. `./bag_processing/`: The ipython notebooks for parsing experiment data and plot
+   1. `bag_processing.ipynb` is to plot the static images
+   2. `video_processing.ipynb` is to plot the video
+2. `./extract_traj/`: The ipython notebooks for extracting data from CARLA data folder
+3. `./learning/`: Different models to learn the mapping from relative configuration to startegies
+   1. `strategy_learning/`: learn strategy classifers
+      1. `strategy_datagen.m`: Generate strategy labels from offline rollouts
+      2. `load_train_classify.m`: Load the strategy labels and offline rollouts and make dataset. Train different models.
+      3. `predict_strategy_filter.m`: Apply a filter to the strategy prediction and visualize it along with offline rollouts
+4. `./nominal_MPC/`: OBCA to solve the collision avoidance problem and produce rollouts offline
+   1. `path_planning_tv_CFTOC.m`: Script to solve one individual scenario
+   2. `path_planning_datagen_par.m`: Script to generate a bunch of rollouts with parallel process
+5. `./online_MPC/`: SG and BL-OBCA onine
+   1. `constraint_generation/`: Strategy Predictor Class and the functions to construct constraints
+   2. `controllers/`: The controller classes
+      1. `ebrake_controller.m`: The Emergency Break controller
+      2. `hpp_obca_controller_FP.m`: The SG-OBCA controller
+      3. `obca_controller_FP.m`: The BL-OBCA controller
+      4. `safety_controller.m`: The safety controller
+   3. `dynamics/`: Vehicle dynamics
+   4. `experiments/`: The main experiments scripts. Note that the Baseline method are referred as "Naive" in all codes 
+      1. `experiment.m`: The script to pick scenario and run experiment
+      2. `datagen.m`: The script to solve all scenarios and generate statistics
+      3. `FSM_HOBCA_naive_fp.m`: The function to use BL control framework (Set of policies: BL-OBCA, Safety, Emergency-Brake)
+      4. `FSM_HOBCA_strat_fp_infalted.m`: The function to use SG control framework (Set of policies: SG-OBCA, Safety, Emergency-Brake)
+   5. `plotting/`: Functions to plot
+   6. `utils/`: Utils for running experiments
+      1. `FiniteStateMachine.m`: The class definition to select different control policies
 
 ## Change log
 ### 10/01/2020

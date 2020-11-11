@@ -6,18 +6,18 @@ clc
 
 %% Load Strategy Dataset, Prediction Model, and validation exps
 model_type = "nn"; % knn, gSVM, bagTree, nn
-[file, path] = uigetfile(sprintf('../models/%s*.mat', model_type), 'Select Prediction Model');
+[file, path] = uigetfile(sprintf('../../models/%s*.mat', model_type), 'Select Prediction Model');
 load([path, file])
 
-[file, path] = uigetfile('../hyperplane_dataset/strategy*.mat', 'Select Raw Strategy Dataset');
+[file, path] = uigetfile('../../hyperplane_dataset/strategy*.mat', 'Select Raw Strategy Dataset');
 load([path, file])
-[file, path] = uigetfile('../hyperplane_dataset/strat_trn_val*.mat', 'Select Train-Val Dataset');
+[file, path] = uigetfile('../../hyperplane_dataset/strat_trn_val*.mat', 'Select Train-Val Dataset');
 load([path, file], 'val_exps')
 fprintf('The exp_nums in validation set are: [%s]\n', num2str(val_exps, '%d,'))
 
 %% Load TV data
 exp_num = 30;
-load(['../data/exp_num_', num2str(exp_num), '.mat'])
+load(['../../data/exp_num_', num2str(exp_num), '.mat'])
 
 training_data = training_set{exp_num};
 if isempty(training_data)
@@ -137,11 +137,11 @@ for i = 1:T-N
 end
 
 %% Save Movie
-if ~isfolder('../movies/')
-    mkdir('../movies')
+if ~isfolder('../../movies/')
+    mkdir('../../movies')
 end
 
-[file,path] = uiputfile(sprintf('../movies/%s_Exp%d_%s.mp4', ...
+[file,path] = uiputfile(sprintf('../../movies/%s_Exp%d_%s.mp4', ...
                     model_type, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
 
 v = VideoWriter([path, file], 'MPEG-4');

@@ -8,7 +8,7 @@ all_nums = 486;
 N = 20;
 
 %% ====== Load data set that is to be appended by yield data
-load('../hyperplane_dataset_07-28-2020/strategy_data_2020-08-03_17-11')
+load('../../hyperplane_dataset_07-28-2020/strategy_data_2020-08-03_17-11')
 
 exp_num = 487;
 
@@ -107,7 +107,7 @@ end
 
 
 
-dataset_filename = ['../hyperplane_dataset_07-28-2020/strategy_data_2020-08-03_17-11_appended_yield.mat'];
+dataset_filename = ['../../hyperplane_dataset_07-28-2020/strategy_data_2020-08-03_17-11_appended_yield.mat'];
 
 save(dataset_filename, 'training_set')
 

@@ -15,7 +15,7 @@ rng(0);
 %[file, path] = uigetfile('../hyperplane_dataset/*.mat', 'Select Raw Dataset');
 %load([path, file])
 
-load('../hyperplane_dataset_07-28-2020/strategy_data_2020-08-03_17-11_appended_yield.mat')
+load('../../hyperplane_dataset_07-28-2020/strategy_data_2020-08-03_17-11_appended_yield.mat')
 %% Construct features and labels, if needed
 % Otherwise skip these sections
 % ======================================
@@ -130,15 +130,15 @@ uisave({'trn_feature_flat', 'trn_label_flat', ...
 		'clas_feature', 'clas_label', 'clas_label_onehot', ...
 		'trn_size', 'val_size', ...
 		'trn_exps', 'val_exps'}, ...
-		['../hyperplane_dataset/strat_trn_val_dataset_', ...
+		['../../hyperplane_dataset/strat_trn_val_dataset_', ...
 		datestr(now, 'yyyy-mm-dd_HH-MM'), '.mat'])
 % ==============================
 
 %% Train
 
 % Check if the folder exists, otherwise create it
-if ~isfolder('../models/')
-	mkdir('../models')
+if ~isfolder('../../models/')
+	mkdir('../../models')
 end
 
 

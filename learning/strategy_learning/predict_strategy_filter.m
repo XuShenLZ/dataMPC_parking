@@ -19,7 +19,7 @@ fprintf('The exp_nums in validation set are: [%s]\n', num2str(val_exps, '%d,'))
 
 %% Load TV data
 exp_num = 44;
-load(['../data/exp_num_', num2str(exp_num), '.mat'])
+load(['../../data/exp_num_', num2str(exp_num), '.mat'])
 
 training_data = training_set{exp_num};
 if isempty(training_data)
@@ -156,11 +156,11 @@ for i = 1:T-N
 end
 
 %% Save Movie
-if ~isfolder('../movies/')
-    mkdir('../movies')
+if ~isfolder('../../movies/')
+    mkdir('../../movies')
 end
 
-[file,path] = uiputfile(sprintf('../movies/%s_Exp%d_%s.mp4', ...
+[file,path] = uiputfile(sprintf('../../movies/%s_Exp%d_%s.mp4', ...
                     model_type, exp_num, datestr(now,'yyyy-mm-dd_HH-MM')));
 
 v = VideoWriter([path, file], 'MPEG-4');
