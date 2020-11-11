@@ -1,11 +1,14 @@
 # dataMPC_parking
 Collision Avoidance in Tightly-Constrained Environments without Coordination: a Hierarchical Control Approach
 
-[Webpage](http://bit.ly/data-sg-control), [arXiv](https://arxiv.org/abs/2011.00413)
+[Webpage](http://bit.ly/data-sg-control),  [arXiv](https://arxiv.org/abs/2011.00413)
 
-Xu Shen, xu_shen@berkeley.edu
-Edward Zhu, edward_zhu@berkeley.edu
-Yvonne R. Stürz, y.stuerz@berkeley.edu
+Authors:
+- Xu Shen, xu_shen@berkeley.edu
+- Edward Zhu, edward_zhu@berkeley.edu
+- Yvonne R. Stürz, y.stuerz@berkeley.edu
+
+This repository contains all codes for MATLAB prototyping and simulation. The Python+ROS implementation on BARC car can be found in another repo through the webpage.
 
 ## Dependencies
 ### MATLAB:
@@ -30,7 +33,7 @@ Yvonne R. Stürz, y.stuerz@berkeley.edu
       2. `load_train_classify.m`: Load the strategy labels and offline rollouts and make dataset. Train different models.
       3. `predict_strategy_filter.m`: Apply a filter to the strategy prediction and visualize it along with offline rollouts
 4. `./nominal_MPC/`: OBCA to solve the collision avoidance problem and produce rollouts offline
-   1. `path_planning_tv_CFTOC.m`: Script to solve one individual scenario
+   1. `path_planning_tv_CFTOC.m`: Script to solve one individual scenario with time varying OBCA
    2. `path_planning_datagen_par.m`: Script to generate a bunch of rollouts with parallel process
 5. `./online_MPC/`: SG and BL-OBCA onine
    1. `constraint_generation/`: Strategy Predictor Class and the functions to construct constraints
@@ -41,7 +44,7 @@ Yvonne R. Stürz, y.stuerz@berkeley.edu
       4. `safety_controller.m`: The safety controller
    3. `dynamics/`: Vehicle dynamics
    4. `experiments/`: The main experiments scripts. Note that the Baseline method are referred as "Naive" in all codes 
-      1. `experiment.m`: The script to pick scenario and run experiment
+      1. `experiment.m`: **The script to pick scenario and run experiment**
       2. `datagen.m`: The script to solve all scenarios and generate statistics
       3. `FSM_HOBCA_naive_fp.m`: The function to use BL control framework (Set of policies: BL-OBCA, Safety, Emergency-Brake)
       4. `FSM_HOBCA_strat_fp_infalted.m`: The function to use SG control framework (Set of policies: SG-OBCA, Safety, Emergency-Brake)
