@@ -6,11 +6,11 @@ clear('all');
 clc
 
 %% Load data
-load('traj_data.mat');
+load('traj_data.mat'); % or traj_data_demo.mat
 map_offset = [210, 285];
 
-%% Experiment number 
-exp_num = 4;
+%% Experiment number
+exp_num = 4; % If you only have access to traj_data_demo.mat, number 4 is the only experiment available
 close('all');
 
 %% Extract TV data
@@ -156,8 +156,8 @@ plt_ops.alpha = 0.5;
 plt_ops.circle = false;
 plt_ops.frame = false;
 
-plt_TV = plot(TV.x, TV.y, 'k--');
-plt_EV_ref = plot(EV.ref_z(1, :), EV.ref_z(2, :), 'g.');
+plt_TV = plot(TV.x, TV.y, 'g--');
+% plt_EV_ref = plot(EV.ref_z(1, :), EV.ref_z(2, :), 'g.');
 for t = 1:T_total
 
 	% Stop plotting early when drive out of frame
@@ -270,7 +270,7 @@ for t = 1:T_total
 	hold on
 	plt_ob2 = plot(Obs{2, t}, 'color', 'black');
 	hold on
-	plt_ob3 = plot(Obs{3, t}, 'color', 'black');
+	plt_ob3 = plot(Obs{3, t}, 'color', 'green', 'alpha', 0.5);
 	hold on
 	axis(map_dim);
 	pause(0.05)

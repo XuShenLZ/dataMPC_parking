@@ -214,7 +214,7 @@ function F = plotExp(dataname, plt_params)
             t_Y = text(ax1, -29, 9, sprintf('Strategy: %s; Lock: %d', strategy_names(strategy_idxs(i)), strategy_locks(i)), 'color', 'k');
             hold on
         elseif exist('FSM_states', 'var') && exist('FSM_states', 'var')
-            t_Y = text(ax1, -29, 9, sprintf('Operation State: %s; Strategy: %s', FSM_states{i}, strategies{i}), 'color', 'k');
+            t_Y = text(ax1, -29, 7, sprintf('Operation State: %s; Strategy: %s', FSM_states{i}, strategies{i}), 'color', 'k');
         else
             t_Y = [];
         end

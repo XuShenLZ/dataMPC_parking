@@ -12,6 +12,7 @@ This repository contains all codes for MATLAB prototyping and simulation. The Py
 
 ## Dependencies
 ### MATLAB:
+(for running simulation)
 1. MPT Toolbox and Yalmip (For solving and viz)
 2. Parallel Computing Toolbox (Only for generating dataset)
 3. Deep Learning Toolbox (For network training and predicting)
@@ -19,8 +20,23 @@ This repository contains all codes for MATLAB prototyping and simulation. The Py
 5. Forces Pro (For real-time implementation)
 
 ### Python:
+(only for processing rosbags from experiments)
 1. ROS Noetic
 2. Packages for pip-installation are listed in `requirement.txt`
+
+## Quick Demo Guide:
+### Clone this repository
+
+### Download the data files for demo purpose:
+[Link](https://drive.google.com/drive/folders/1hdrFNZdiFooTXVtUgPC2hGPrTf9J0JdY?usp=sharing). Place the files in the correct directories. (create new folders when necessary)
+
+### To solve offline rollouts:
+1. Run `./nominal_MPC/path_planning_tv_CFTOC.m`.
+
+### To run strategy-guided approach online:
+1. Run `./online_MPC/experiments/experiment.m`
+2. After solving, copy the name of the datalog file. The name is printed in the command window, e.g. "Data saved in: xxx/FSM_HOBCA_strat_fp_Exp4_Col0_xxxx.mat"
+3. Run `./online_MPC/plotting/generate_movie.m` to visualize the performance. Specify the desired datalog at line 6, e.g. "FSM_HOBCA_strat_fp_Exp4_Col0_xxxx".
 
 ## File Structure:
 1. `./bag_processing/`: The ipython notebooks for parsing experiment data and plot
@@ -53,6 +69,9 @@ This repository contains all codes for MATLAB prototyping and simulation. The Py
       1. `FiniteStateMachine.m`: The class definition to select different control policies
 
 ## Change log
+### 05/25/2021
+1. Tested the components for demo purpose.
+
 ### 10/01/2020
 1. Reorganize the files. Now `FSM_HOBCA_naive_fp.m` and `FSM_HOBCA_strat_fp.m` are all functions. Use `experiment.m` or `datagen.m` to call them.
 2. Added `Safe-Yield` state.
