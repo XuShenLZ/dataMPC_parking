@@ -8,7 +8,7 @@ Authors:
 - Edward Zhu, edward_zhu@berkeley.edu
 - Yvonne R. Stürz, y.stuerz@berkeley.edu
 
-This repository contains all codes for MATLAB prototyping and simulation. The Python+ROS implementation on BARC car can be found in [`mpclab_strategy_obca`](https://github.com/MPC-Berkeley/mpclab_strategy_obca).
+This repository contains all codes for MATLAB prototyping and simulation. The Python+ROS implementation on the BARC car can be found in [`mpclab_strategy_obca`](https://github.com/MPC-Berkeley/mpclab_strategy_obca).
 
 ## Dependencies
 ### MATLAB:
@@ -27,13 +27,13 @@ This repository contains all codes for MATLAB prototyping and simulation. The Py
 ## Quick Demo Guide:
 ### Clone this repository
 
-### Download the data files for demo purpose:
+### Download the demo data files:
 [Link](https://drive.google.com/drive/folders/1hdrFNZdiFooTXVtUgPC2hGPrTf9J0JdY?usp=sharing). Place the files in the correct directories. (create new folders when necessary)
 
-### To solve offline rollouts:
+### To solve the offline rollouts:
 1. Run `./nominal_MPC/path_planning_tv_CFTOC.m`.
 
-### To run strategy-guided approach online:
+### To run the strategy-guided approach online:
 1. Run `./online_MPC/experiments/experiment.m`
 2. After solving, copy the name of the datalog file. The name is printed in the command window, e.g. "Data saved in: xxx/FSM_HOBCA_strat_fp_Exp4_Col0_xxxx.mat"
 3. Run `./online_MPC/plotting/generate_movie.m` to visualize the performance. Specify the desired datalog at line 6, e.g. "FSM_HOBCA_strat_fp_Exp4_Col0_xxxx".
