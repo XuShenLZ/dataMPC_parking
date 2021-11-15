@@ -30,6 +30,8 @@ This repository contains all codes for MATLAB prototyping and simulation. The Py
 ### Download the demo data files:
 [Link](https://drive.google.com/drive/folders/1hdrFNZdiFooTXVtUgPC2hGPrTf9J0JdY?usp=sharing). Place the files in the correct directories. (create new folders when necessary)
 
+(For people having troubles accessing Google Drive, use Baidu instead: https://pan.baidu.com/s/1fJX0sF51U1Gc_mCmgmwt-g Access Code: a7ho)
+
 ### To solve the offline rollouts:
 1. Run `./nominal_MPC/path_planning_tv_CFTOC.m`.
 
